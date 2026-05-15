@@ -8,7 +8,7 @@ export class WhatsAppApi {
   ) {}
 
   async sendMessage(to: string, text: string): Promise<unknown> {
-    const url = `https://graph.facebook.com/v21.0/512965688566060/messages`; // Example ID
+    const url = `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSION}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -35,7 +35,7 @@ export class WhatsAppApi {
   }
 
   async markAsRead(messageId: string): Promise<void> {
-    const url = `https://graph.facebook.com/v21.0/512965688566060/messages`;
+    const url = `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSION}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
     await fetch(url, {
       method: "POST",
       headers: {

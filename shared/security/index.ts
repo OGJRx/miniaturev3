@@ -1,5 +1,6 @@
 export * from "./crypto";
 export * from "./bot-setup";
+export * from "../services/telegram-api";
 
 import { CoreEnv, BorgExecutionContext } from "../types";
 import { timingSafeEqual, hmacSha256 } from "./crypto";
