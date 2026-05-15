@@ -1,0 +1,18 @@
+# BORGPTRON - Variables de Desarrollo Local
+# Copiar a .dev.vars y rellenar con valores reales
+
+# === TELEGRAM BOT TOKENS ===
+FRONTEND_BOT_TOKEN=tu_frontend_bot_token_aqui
+BACKEND_BOT_TOKEN=tu_backend_bot_token_aqui
+
+# === GEMINI AI ===
+GEMINI_API_KEY=tu_gemini_api_key_aqui
+
+# === AUTENTICACIÓN INTERNA (Service Binding) ===
+INTERNAL_SERVICE_TOKEN=ec1ac700-c957-4ed7-8df3-70a70fd447ea
+
+# === AUTENTICACIÓN UNIFICADA (v8.3.7) ===
+BORG_SECRET_KEY=tu_secreto_maestro_aqui
+
+# === CLOUDFLARE ===
+CLOUDFLARE_ACCOUNT_ID=tu_account_id_aqui

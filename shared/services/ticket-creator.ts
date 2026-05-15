@@ -1,0 +1,50 @@
+import { D1Database } from "@cloudflare/workers-types";
+import { EphemeralState } from "../types";
+import { SERVICE_DURATIONS } from "../types/constants";
+
+export class TicketCreator {
+  constructor(private db: D1Database) {}
+  async createTicket(
+    s: EphemeralState,
+  ): Promise<{ success: boolean; ticket_id: string }> {
+    const ticket_id = `T-${Date.now()}`;
+    const hora_fin = calculateEndTime(
+      s.hora_cita!,
+      SERVICE_DURATIONS[s.servicio_solicitado!] || 60,
+    );
+
+    await this.db
+      .prepare(
+        "INSERT INTO tickets (ticket_id, session_id, telegram_user_id, telegram_chat_id, " +
+          "vehiculo_tipo, vehiculo_motor, vehiculo_era, servicio_solicitado, fecha_cita, hora_cita, hora_fin, kilometraje) " +
+          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        ticket_id,
+        s.session_id,
+        s.telegram_user_id,
+        s.telegram_chat_id || 0,
+        s.vehiculo_tipo,
+        s.vehiculo_motor,
+        s.vehiculo_era,
+        s.servicio_solicitado,
+        s.fecha_cita,
+        s.hora_cita,
+        hora_fin,
+        s.kilometraje,
+      )
+      .run();
+
+    return { success: true, ticket_id };
+  }
+}
+
+export const calculateEndTime = (h: string, d: number): string => {
+  const parts = h.split(":").map(Number);
+  const hh = parts[0] ?? 0;
+  const mm = parts[1] ?? 0;
+  const total = hh * 60 + mm + d;
+  const endH = Math.floor(total / 60) % 24;
+  const endM = total % 60;
+  return `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
+};
