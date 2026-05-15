@@ -1,6 +1,8 @@
 import { CoreEnv, BorgExecutionContext } from "../../../shared/types";
 import { WhatsAppWebhookEventSchema } from "../../../shared/whatsapp/whatsapp-types";
 import { hmacSha256, timingSafeEqual } from "../../../shared/security/crypto";
+import { WhatsAppApi } from "../../../shared/whatsapp/whatsapp-api";
+import { WhatsAppBookingOrchestrator } from "../whatsapp-booking";
 
 export async function handleWhatsAppWebhook(
   req: Request,
@@ -47,16 +49,13 @@ export async function handleWhatsAppWebhook(
                 )
                   .bind(msg.id, msg.from)
                   .run();
-              } catch (e: unknown) {
+              } catch (_e: unknown) {
                 // If unique constraint fails, it's a duplicate
                 console.log(`[WhatsAppWebhook] Duplicate message: ${msg.id}`);
                 continue;
               }
 
               // 2. Mark as read
-              const { WhatsAppApi } = await import(
-                "../../../shared/whatsapp/whatsapp-api"
-              );
               const waApi = new WhatsAppApi(env);
               ctx.waitUntil(waApi.markAsRead(msg.id));
 
@@ -70,9 +69,6 @@ export async function handleWhatsAppWebhook(
               );
 
               // 4. Process with Orchestrator
-              const { WhatsAppBookingOrchestrator } = await import(
-                "../whatsapp-booking"
-              );
               const orchestrator = new WhatsAppBookingOrchestrator(env, ctx);
               if (msg.type === "text" && msg.text) {
                 ctx.waitUntil(

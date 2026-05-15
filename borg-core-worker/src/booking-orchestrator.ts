@@ -102,51 +102,7 @@ export class BookingOrchestrator {
     session: EphemeralState,
   ) {
     if (step.message === "CONFIRMED") {
-      const ticketId = step.options?.find((o) => o.label === "ticket_id")?.value;
-      const notifPromise = AdminNotificationService.dispatch(
-        ctx.env,
-        session,
-        ticketId!,
-        "telegram",
-      );
-      ctx.executionContext.waitUntil(notifPromise);
-
-      const fechaFriendly = session.fecha_cita
-        ? formatDateFriendly(new Date(session.fecha_cita + "T12:00:00"))
-        : "N/A";
-
-      const loc = {
-        latitud: parseFloat(ctx.env.TALLER_LATITUD || "0"),
-        longitud: parseFloat(ctx.env.TALLER_LONGITUD || "0"),
-        mapsUrl: ctx.env.TALLER_MAPS_URL || "",
-      };
-
-      const summary =
-        `✅ <b>¡Cita confirmada!</b>\n\n` +
-        `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId!)}</code>\n` +
-        `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
-        `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
-        `📟 <b>Kilometraje:</b> ${session.kilometraje ?? "N/A"} km\n` +
-        `🛠️ <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
-        `🗓️ <b>Fecha:</b> ${escapeHtml(fechaFriendly)}\n` +
-        `⏰ <b>Hora:</b> ${escapeHtml(session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A")}\n\n` +
-        `📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR. Usa el mapa para navegar directamente.`;
-
-      const keyboard = new InlineKeyboard();
-      if (loc.mapsUrl) {
-        keyboard.url("🌐 Ver en Google Maps", loc.mapsUrl);
-      }
-
-      await UiManager.safeEditOrReply(ctx, summary, {
-        parse_mode: "HTML",
-        reply_markup:
-          keyboard.inline_keyboard.length > 0 ? keyboard : undefined,
-      });
-
-      if (loc.latitud !== 0 && loc.longitud !== 0 && ctx.chat) {
-        await ctx.api.sendLocation(ctx.chat.id, loc.latitud, loc.longitud);
-      }
-      return;
+      return await this.handleConfirmed(ctx, step, session);
     }
 
     if (step.message === "CANCELLED") {
@@ -157,59 +113,113 @@ export class BookingOrchestrator {
 
     const k = new InlineKeyboard();
     if (step.options) {
-      // Build the keyboard asynchronously
-      const keyboardPromises = step.options.map(async (opt) => {
-        let action = "";
-        switch (session.paso_actual) {
-          case 1:
-            action = "set_tipo";
-            break;
-          case 2:
-            action = opt.value === "HELP" ? "motor_help" : "set_motor";
-            break;
-          case 3:
-            action = "set_era";
-            break;
-          case 4:
-            action = "set_km";
-            break;
-          case 5:
-            action = "set_svc";
-            break;
-          case 6:
-            action = "set_fecha";
-            break;
-          case 7:
-            action = "set_hora";
-            break;
-          case 8:
-            action = "conf_booking";
-            break;
-        }
-        return {
-          label: opt.label,
-          callback: action ? await buildCallback(action, opt.value, secret) : "",
-        };
-      });
-
-      const buttons = await Promise.all(keyboardPromises);
-      buttons.forEach((btn, i) => {
-        if (btn.callback) {
-          k.text(btn.label, btn.callback);
-          if (session.paso_actual === 1 && i % 2 === 1) k.row();
-          else if (session.paso_actual === 7 && i % 3 === 2) k.row();
-          else if (
-            [2, 3, 5, 6, 8].includes(session.paso_actual) ||
-            btn.label === "❓ Ayuda"
-          )
-            k.row();
-        }
-      });
+      const buttons = await this.buildKeyboardButtons(
+        step.options,
+        session.paso_actual,
+        secret,
+      );
+      this.populateKeyboard(k, buttons, session.paso_actual);
     }
 
     return await UiManager.safeEditOrReply(ctx, step.message, {
       reply_markup: k,
       parse_mode: "HTML",
+    });
+  }
+
+  private async handleConfirmed(
+    ctx: BorgContext<CoreEnv>,
+    step: { options?: { label: string; value: string }[] },
+    session: EphemeralState,
+  ) {
+    const ticketId = step.options?.find((o) => o.label === "ticket_id")?.value;
+    const notifPromise = AdminNotificationService.dispatch(
+      ctx.env,
+      session,
+      ticketId!,
+      "telegram",
+    );
+    ctx.executionContext.waitUntil(notifPromise);
+
+    const fechaFriendly = session.fecha_cita
+      ? formatDateFriendly(new Date(session.fecha_cita + "T12:00:00"))
+      : "N/A";
+
+    const loc = {
+      latitud: parseFloat(ctx.env.TALLER_LATITUD || "0"),
+      longitud: parseFloat(ctx.env.TALLER_LONGITUD || "0"),
+      mapsUrl: ctx.env.TALLER_MAPS_URL || "",
+    };
+
+    const summary =
+      `✅ <b>¡Cita confirmada!</b>\n\n` +
+      `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId!)}</code>\n` +
+      `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
+      `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
+      `📟 <b>Kilometraje:</b> ${session.kilometraje ?? "N/A"} km\n` +
+      `🛠️ <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
+      `🗓️ <b>Fecha:</b> ${escapeHtml(fechaFriendly)}\n` +
+      `⏰ <b>Hora:</b> ${escapeHtml(session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A")}\n\n` +
+      `📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR. Usa el mapa para navegar directamente.`;
+
+    const keyboard = new InlineKeyboard();
+    if (loc.mapsUrl) {
+      keyboard.url("🌐 Ver en Google Maps", loc.mapsUrl);
+    }
+
+    await UiManager.safeEditOrReply(ctx, summary, {
+      parse_mode: "HTML",
+      reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : undefined,
+    });
+
+    if (loc.latitud !== 0 && loc.longitud !== 0 && ctx.chat) {
+      await ctx.api.sendLocation(ctx.chat.id, loc.latitud, loc.longitud);
+    }
+    return;
+  }
+
+  private async buildKeyboardButtons(
+    options: { label: string; value: string }[],
+    paso: number,
+    secret: string,
+  ) {
+    const actionMap: Record<number, string> = {
+      1: "set_tipo",
+      2: "set_motor",
+      3: "set_era",
+      4: "set_km",
+      5: "set_svc",
+      6: "set_fecha",
+      7: "set_hora",
+      8: "conf_booking",
+    };
+
+    return await Promise.all(
+      options.map(async (opt) => {
+        const action =
+          paso === 2 && opt.value === "HELP" ? "motor_help" : actionMap[paso];
+        return {
+          label: opt.label,
+          callback: action
+            ? await buildCallback(action, opt.value, secret)
+            : "",
+        };
+      }),
+    );
+  }
+
+  private populateKeyboard(
+    k: InlineKeyboard,
+    buttons: { label: string; callback: string }[],
+    paso: number,
+  ) {
+    buttons.forEach((btn, i) => {
+      if (!btn.callback) return;
+      k.text(btn.label, btn.callback);
+      if (paso === 1 && i % 2 === 1) k.row();
+      else if (paso === 7 && i % 3 === 2) k.row();
+      else if ([2, 3, 5, 6, 8].includes(paso) || btn.label === "❓ Ayuda")
+        k.row();
     });
   }
 

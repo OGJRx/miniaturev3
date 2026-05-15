@@ -96,9 +96,11 @@ export class AdminNotificationService {
         `🗓️ *Fecha:* ${session.fecha_cita}\n` +
         `⏰ *Hora:* ${session.hora_cita}\n\n` +
         `¡Te esperamos!`;
-      await waApi.sendMessage(session.platform_user_id, clientMsg).catch((e) => {
-        console.error("[AdminNotif] Failed to send WhatsApp to client", e);
-      });
+      await waApi
+        .sendMessage(session.platform_user_id, clientMsg)
+        .catch((e) => {
+          console.error("[AdminNotif] Failed to send WhatsApp to client", e);
+        });
     }
 
     const service = new AdminNotificationService(env.DB);

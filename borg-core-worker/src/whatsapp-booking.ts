@@ -1,12 +1,12 @@
-import { CoreEnv, BorgExecutionContext, EphemeralState } from "../../shared/types";
+import {
+  CoreEnv,
+  BorgExecutionContext,
+  EphemeralState,
+} from "../../shared/types";
 import { BookingCoreService } from "../../shared/services/booking-core";
 import { WhatsAppApi } from "../../shared/whatsapp/whatsapp-api";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
-import {
-  escapeHtml,
-  formatHourTo12,
-  formatDateFriendly,
-} from "../../shared/ui/formatters";
+import { formatHourTo12, formatDateFriendly } from "../../shared/ui/formatters";
 
 export class WhatsAppBookingOrchestrator {
   private api: WhatsAppApi;
@@ -27,59 +27,99 @@ export class WhatsAppBookingOrchestrator {
       "whatsapp",
     );
 
-    // Basic Command Handling
-    if (text.toLowerCase().includes("agendar") || text.toLowerCase() === "hola" || text === "1") {
-       if (session.paso_actual === 0 || text.toLowerCase().includes("agendar")) {
-          const result = await this.core.handleAction(session, "start_booking", "0");
-          return await this.renderStep(phoneNumber, result.step, result.newState);
-       }
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes("agendar") || lowerText === "hola" || text === "1") {
+      if (session.paso_actual === 0 || lowerText.includes("agendar")) {
+        const result = await this.core.handleAction(
+          session,
+          "start_booking",
+          "0",
+        );
+        return await this.renderStep(phoneNumber, result.step, result.newState);
+      }
     }
 
-    // Numbered selection logic for WhatsApp
     if (session.paso_actual > 0) {
-        const selection = parseInt(text.trim());
-        if (!isNaN(selection)) {
-            const step = await this.core.renderStep(session);
-            if (step.options && selection > 0 && selection <= step.options.length) {
-                const opt = step.options[selection - 1]!;
-                let action = "";
-                switch (session.paso_actual) {
-                    case 1: action = "set_tipo"; break;
-                    case 2: action = opt.value === "HELP" ? "motor_help" : "set_motor"; break;
-                    case 3: action = "set_era"; break;
-                    case 4: action = "set_km"; break;
-                    case 5: action = "set_svc"; break;
-                    case 6: action = "set_fecha"; break;
-                    case 7: action = "set_hora"; break;
-                    case 8: action = "conf_booking"; break;
-                }
+      const selection = parseInt(text.trim(), 10);
+      if (!isNaN(selection)) {
+        const processed = await this.handleSelection(
+          phoneNumber,
+          session,
+          selection,
+        );
+        if (processed) return;
+      }
 
-                if (action === "motor_help") {
-                    await this.api.sendMessage(phoneNumber, "⚙️ *Ayuda de Motor*\n\nIndica la tecnología de propulsión. Si tienes dudas, consulta el manual de tu vehículo.");
-                    return;
-                }
-
-                const result = await this.core.handleAction(session, action, opt.value);
-                return await this.renderStep(phoneNumber, result.step, result.newState);
-            }
+      if (session.paso_actual === 4) {
+        const km = parseInt(text, 10);
+        if (!isNaN(km)) {
+          const result = await this.core.handleAction(
+            session,
+            "set_km",
+            String(km),
+          );
+          return await this.renderStep(
+            phoneNumber,
+            result.step,
+            result.newState,
+          );
         }
-
-        // Handle free text for KM if step 4
-        if (session.paso_actual === 4) {
-             const km = parseInt(text);
-             if (!isNaN(km)) {
-                const result = await this.core.handleAction(session, "set_km", String(km));
-                return await this.renderStep(phoneNumber, result.step, result.newState);
-             }
-        }
+      }
     }
 
-    await this.api.sendMessage(phoneNumber, "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.");
+    await this.api.sendMessage(
+      phoneNumber,
+      "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.",
+    );
   }
 
-  private async renderStep(phoneNumber: string, step: any, session: EphemeralState) {
+  private async handleSelection(
+    phoneNumber: string,
+    session: EphemeralState,
+    selection: number,
+  ): Promise<boolean> {
+    const step = await this.core.renderStep(session);
+    if (!step.options || selection <= 0 || selection > step.options.length) {
+      return false;
+    }
+
+    const opt = step.options[selection - 1]!;
+    const actionMap: Record<number, string> = {
+      1: "set_tipo",
+      2: opt.value === "HELP" ? "motor_help" : "set_motor",
+      3: "set_era",
+      4: "set_km",
+      5: "set_svc",
+      6: "set_fecha",
+      7: "set_hora",
+      8: "conf_booking",
+    };
+
+    const action = actionMap[session.paso_actual];
+    if (!action) return false;
+
+    if (action === "motor_help") {
+      await this.api.sendMessage(
+        phoneNumber,
+        "⚙️ *Ayuda de Motor*\n\nIndica la tecnología de propulsión. Si tienes dudas, consulta el manual de tu vehículo.",
+      );
+      return true;
+    }
+
+    const result = await this.core.handleAction(session, action, opt.value);
+    await this.renderStep(phoneNumber, result.step, result.newState);
+    return true;
+  }
+
+  private async renderStep(
+    phoneNumber: string,
+    step: { message: string; options?: { label: string; value: string }[] },
+    session: EphemeralState,
+  ) {
     if (step.message === "CONFIRMED") {
-      const ticketId = step.options?.find((o: any) => o.label === "ticket_id")?.value;
+      const ticketId = step.options?.find(
+        (o) => o.label === "ticket_id",
+      )?.value;
 
       const notifPromise = AdminNotificationService.dispatch(
         this.env,
@@ -111,12 +151,13 @@ export class WhatsAppBookingOrchestrator {
       return await this.api.sendMessage(phoneNumber, "❌ *Cita cancelada.*");
     }
 
-    let fullMessage = step.message.replace(/<b>/g, "*").replace(/<\/b>/g, "*") + "\n\n";
+    let fullMessage =
+      step.message.replace(/<b>/g, "*").replace(/<\/b>/g, "*") + "\n\n";
     if (step.options) {
-        step.options.forEach((opt: any, i: number) => {
-            fullMessage += `${i + 1}. ${opt.label}\n`;
-        });
-        fullMessage += "\n_Responde con el número de tu opción._";
+      step.options.forEach((opt, i) => {
+        fullMessage += `${i + 1}. ${opt.label}\n`;
+      });
+      fullMessage += "\n_Responde con el número de tu opción._";
     }
 
     return await this.api.sendMessage(phoneNumber, fullMessage);

@@ -1,5 +1,5 @@
 import { D1Database } from "@cloudflare/workers-types";
-import { EphemeralState, EphemeralStateSchema } from "../types";
+import { EphemeralState } from "../types";
 import { SlotValidator } from "./slot-validator";
 import { TicketCreator } from "./ticket-creator";
 import {
@@ -8,7 +8,7 @@ import {
   SERVICE_OPTIONS,
 } from "../types/constants";
 import { formatDateISO, formatDateFriendly } from "../ui/formatters";
-import { getVenezuelaNow, getVenezuelaTimeParts } from "../ui/timezone";
+import { getVenezuelaNow } from "../ui/timezone";
 
 export interface BookingStep {
   message: string;
@@ -98,7 +98,7 @@ export class BookingCoreService {
     action: string,
     value: string,
   ): Promise<{ step: BookingStep; newState: EphemeralState }> {
-    let newState = { ...session };
+    const newState = { ...session };
 
     switch (action) {
       case "start_booking":
@@ -215,7 +215,8 @@ export class BookingCoreService {
             const iso = formatDateISO(d);
             const friendly = formatDateFriendly(d);
             options.push({
-              label: iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
+              label:
+                iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
               value: iso,
             });
             count++;
