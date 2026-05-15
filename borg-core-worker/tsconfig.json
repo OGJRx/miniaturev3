@@ -8,5 +8,5 @@
     "rootDir": ".."
   },
   "exclude": ["node_modules", "dist"],
-  "include": ["src/index.ts", "../shared/core.ts"]
+  "include": ["src/index.ts", "../shared/**/*.ts"]
 }

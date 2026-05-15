@@ -1,6 +1,6 @@
 {
   "name": "borg-core-worker",
-  "version": "9.6.0-TITANIUM",
+  "version": "9.7.0-TITANIUM",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",

@@ -40,7 +40,27 @@ export async function handleWhatsAppWebhook(
         for (const change of entry.changes) {
           if (change.value.messages) {
             for (const msg of change.value.messages) {
-              // Persist message to D1
+              // 1. Idempotency check
+              try {
+                await env.DB.prepare(
+                  "INSERT INTO processed_wa_messages (wa_message_id, phone_number) VALUES (?, ?)",
+                )
+                  .bind(msg.id, msg.from)
+                  .run();
+              } catch (e: unknown) {
+                // If unique constraint fails, it's a duplicate
+                console.log(`[WhatsAppWebhook] Duplicate message: ${msg.id}`);
+                continue;
+              }
+
+              // 2. Mark as read
+              const { WhatsAppApi } = await import(
+                "../../../shared/whatsapp/whatsapp-api"
+              );
+              const waApi = new WhatsAppApi(env);
+              ctx.waitUntil(waApi.markAsRead(msg.id));
+
+              // 3. Persist message to D1
               ctx.waitUntil(
                 env.DB.prepare(
                   "INSERT INTO whatsapp_messages (wa_message_id, phone_number, direction, status, payload) VALUES (?, ?, 'inbound', 'received', ?)",
@@ -48,6 +68,17 @@ export async function handleWhatsAppWebhook(
                   .bind(msg.id, msg.from, JSON.stringify(msg))
                   .run(),
               );
+
+              // 4. Process with Orchestrator
+              const { WhatsAppBookingOrchestrator } = await import(
+                "../whatsapp-booking"
+              );
+              const orchestrator = new WhatsAppBookingOrchestrator(env, ctx);
+              if (msg.type === "text" && msg.text) {
+                ctx.waitUntil(
+                  orchestrator.handleMessage(msg.from, msg.text.body),
+                );
+              }
             }
           }
         }

@@ -1,87 +1,19 @@
-import { EphemeralState, CoreEnv, BorgContext } from "../../shared/types";
-import { StepRenderer } from "../../shared/ui/step-renderer";
-import { D1Database } from "@cloudflare/workers-types";
+import { CoreEnv, BorgContext, EphemeralState } from "../../shared/types";
+import { BookingCoreService } from "../../shared/services/booking-core";
 import { buildCallback, parseCallback } from "../../shared/security";
 import { InlineKeyboard } from "grammy";
 import { UiManager } from "../../shared/ui/ui-manager";
-import { todayVET, getVenezuelaTimeParts } from "../../shared/ui/timezone";
-import { formatDateFriendly } from "../../shared/ui/formatters";
-import { OFFICE_HOURS } from "../../shared/types/constants";
-import { TicketCreator } from "../../shared/services/ticket-creator";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
-import { escapeHtml, formatHourTo12 } from "../../shared/ui/formatters";
+import {
+  escapeHtml,
+  formatHourTo12,
+  formatDateFriendly,
+} from "../../shared/ui/formatters";
 import { MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
 
 export class BookingOrchestrator {
-  private renderer = new StepRenderer();
-
-  async getSession(
-    db: D1Database,
-    userId: number,
-    chatId: number,
-  ): Promise<EphemeralState> {
-    const res = await db
-      .prepare(
-        "SELECT session_id, telegram_user_id, telegram_chat_id, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE telegram_user_id = ? AND bot_type = 'frontend' ORDER BY updated_at DESC LIMIT 1",
-      )
-      .bind(userId)
-      .first<EphemeralState>();
-
-    if (res) return res;
-
-    const sessionId = "S-" + Date.now() + "-" + userId;
-    const newState: EphemeralState = {
-      session_id: sessionId,
-      telegram_user_id: userId,
-      telegram_chat_id: chatId,
-      estado_flujo: "iniciado",
-      paso_actual: 0,
-      version: 1,
-      bot_type: "frontend",
-    };
-
-    await db
-      .prepare(
-        "INSERT INTO sessions (session_id, telegram_user_id, telegram_chat_id, bot_type, estado_flujo, paso_actual) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .bind(sessionId, userId, chatId, "frontend", "iniciado", 0)
-      .run();
-
-    return newState;
-  }
-
-  async updateSession(
-    db: D1Database,
-    sessionId: string,
-    data: Partial<EphemeralState>,
-  ) {
-    const allowedKeys: (keyof EphemeralState)[] = [
-      "active_mode",
-      "estado_flujo",
-      "paso_actual",
-      "vehiculo_tipo",
-      "vehiculo_motor",
-      "vehiculo_era",
-      "kilometraje",
-      "servicio_solicitado",
-      "fecha_cita",
-      "hora_cita",
-      "bay_number",
-    ];
-    const entries = Object.entries(data).filter(([k]) =>
-      allowedKeys.includes(k as keyof EphemeralState),
-    );
-    if (entries.length === 0) return;
-
-    const sets = entries.map(([k]) => `${k} = ?`).join(", ");
-    const values = entries.map(([, v]) => v);
-
-    await db
-      .prepare(
-        `UPDATE sessions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?`,
-      )
-      .bind(...values, sessionId)
-      .run();
+  private async getCore(ctx: BorgContext<CoreEnv>) {
+    return new BookingCoreService(ctx.env.DB);
   }
 
   async handleUpdate(ctx: BorgContext<CoreEnv>) {
@@ -89,7 +21,12 @@ export class BookingOrchestrator {
     const chatId = ctx.chat?.id || userId;
     if (!userId || !chatId) return;
 
-    const session = await this.getSession(ctx.env.DB, userId, chatId);
+    const core = await this.getCore(ctx);
+    const session = await core.getSession(
+      String(userId),
+      String(chatId),
+      "telegram",
+    );
 
     if (ctx.hasCommand("start")) {
       return await this.handleStart(ctx);
@@ -145,228 +82,34 @@ export class BookingOrchestrator {
       return ctx.answerCallbackQuery("⚠️ Error de sesión");
 
     const { action, value } = parsed;
-    const db = ctx.env.DB;
+    const core = await this.getCore(ctx);
     const secret = ctx.env.BORG_SECRET_KEY;
 
-    switch (action) {
-      case "start_booking":
-        return await this.handleStartBooking(ctx, db, session, secret);
-      case "set_tipo":
-        return await this.handleSetTipo(ctx, db, session, secret, value);
-      case "set_motor":
-        return await this.handleSetMotor(ctx, db, session, secret, value);
-      case "set_era":
-        return await this.handleSetEra(ctx, db, session, secret, value);
-      case "set_km":
-        return await this.handleSetKm(ctx, db, session, secret, value);
-      case "set_svc":
-        return await this.handleSetSvc(ctx, db, session, secret, value);
-      case "set_fecha":
-        return await this.handleSetFecha(ctx, db, session, secret, value);
-      case "set_hora":
-        return await this.handleSetHora(ctx, db, session, secret, value);
-      case "conf_booking":
-        return await this.handleConfBooking(ctx, db, session, value);
-      case "motor_help": {
-        await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
-        return await ctx.answerCallbackQuery();
-      }
+    if (action === "motor_help") {
+      await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
+      return await ctx.answerCallbackQuery();
     }
+
+    const result = await core.handleAction(session, action, value);
+    await this.renderStep(ctx, result.step, secret, result.newState);
     await ctx.answerCallbackQuery().catch(() => {});
   }
 
-  private async handleStartBooking(
+  private async renderStep(
     ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
+    step: { message: string; options?: { label: string; value: string }[] },
     secret: string,
-  ) {
-    await this.updateSession(db, session.session_id!, { paso_actual: 1 });
-    const step = await this.renderer.renderStepTipo(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetTipo(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
     session: EphemeralState,
-    secret: string,
-    value: string,
   ) {
-    await this.updateSession(db, session.session_id!, {
-      vehiculo_tipo: value,
-      paso_actual: 2,
-    });
-    const step = await this.renderer.renderStepMotor(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetMotor(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    await this.updateSession(db, session.session_id!, {
-      vehiculo_motor: value,
-      paso_actual: 3,
-    });
-    const step = await this.renderer.renderStepEra(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetEra(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    await this.updateSession(db, session.session_id!, {
-      vehiculo_era: value,
-      paso_actual: 4,
-    });
-    const step = await this.renderer.renderStepKilometraje(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetKm(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    const km = parseInt(value, 10);
-    if (Number.isNaN(km)) return ctx.answerCallbackQuery("❌ Valor inválido");
-    await this.updateSession(db, session.session_id!, {
-      kilometraje: km,
-      paso_actual: 5,
-    });
-    const step = await this.renderer.renderStepServicio(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetSvc(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    await this.updateSession(db, session.session_id!, {
-      servicio_solicitado: value,
-      paso_actual: 6,
-    });
-    const step = await this.renderer.renderStepFecha(secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetFecha(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    const todayStr = todayVET();
-    if (value < todayStr) {
-      await ctx.answerCallbackQuery("❌ No puedes agendar una fecha pasada");
-      return;
-    }
-
-    if (value === todayStr) {
-      const now = getVenezuelaTimeParts();
-      const latestSlotHour = OFFICE_HOURS.CLOSE - 1;
-      const latestSlotMinute = 60 - OFFICE_HOURS.duracionSlot;
-      if (
-        now.hour > latestSlotHour ||
-        (now.hour === latestSlotHour && now.minute >= latestSlotMinute)
-      ) {
-        await ctx.answerCallbackQuery(
-          "❌ No quedan horas disponibles para hoy. Selecciona otro día.",
-        );
-        return;
-      }
-    }
-
-    const dateParts = getVenezuelaTimeParts(new Date(value + "T12:00:00"));
-    if (!OFFICE_HOURS.IS_WORK_DAY(dateParts.dayOfWeek)) {
-      await ctx.answerCallbackQuery(
-        "❌ El taller no labora los fines de semana",
-      );
-      return;
-    }
-
-    await this.updateSession(db, session.session_id!, {
-      fecha_cita: value,
-      paso_actual: 7,
-    });
-    const step = await this.renderer.renderStepHora(db, value, secret);
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleSetHora(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    secret: string,
-    value: string,
-  ) {
-    await this.updateSession(db, session.session_id!, {
-      hora_cita: value,
-      paso_actual: 8,
-    });
-    const step = await this.renderer.renderConfirmacion(
-      { ...session, hora_cita: value },
-      secret,
-    );
-    return await UiManager.safeEditOrReply(ctx, step.message, {
-      ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-      parse_mode: "HTML",
-    });
-  }
-
-  private async handleConfBooking(
-    ctx: BorgContext<CoreEnv>,
-    db: D1Database,
-    session: EphemeralState,
-    value: string,
-  ) {
-    if (value === "yes") {
-      const creator = new TicketCreator(db);
-      const res = await creator.createTicket(session);
+    if (step.message === "CONFIRMED") {
+      const ticketId = step.options?.find((o) => o.label === "ticket_id")?.value;
       const notifPromise = AdminNotificationService.dispatch(
         ctx.env,
         session,
-        res.ticket_id,
+        ticketId!,
+        "telegram",
       );
       ctx.executionContext.waitUntil(notifPromise);
-      await this.updateSession(db, session.session_id!, {
-        estado_flujo: "confirmado",
-      });
 
       const fechaFriendly = session.fecha_cita
         ? formatDateFriendly(new Date(session.fecha_cita + "T12:00:00"))
@@ -380,7 +123,7 @@ export class BookingOrchestrator {
 
       const summary =
         `✅ <b>¡Cita confirmada!</b>\n\n` +
-        `📋 <b>Ticket:</b> <code>${escapeHtml(res.ticket_id)}</code>\n` +
+        `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId!)}</code>\n` +
         `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
         `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
         `📟 <b>Kilometraje:</b> ${session.kilometraje ?? "N/A"} km\n` +
@@ -405,24 +148,81 @@ export class BookingOrchestrator {
       }
       return;
     }
-    await this.updateSession(db, session.session_id!, {
-      estado_flujo: "cancelado",
-    });
-    return await UiManager.safeEditOrReply(ctx, "❌ <b>Cita cancelada.</b>", {
+
+    if (step.message === "CANCELLED") {
+      return await UiManager.safeEditOrReply(ctx, "❌ <b>Cita cancelada.</b>", {
+        parse_mode: "HTML",
+      });
+    }
+
+    const k = new InlineKeyboard();
+    if (step.options) {
+      // Build the keyboard asynchronously
+      const keyboardPromises = step.options.map(async (opt) => {
+        let action = "";
+        switch (session.paso_actual) {
+          case 1:
+            action = "set_tipo";
+            break;
+          case 2:
+            action = opt.value === "HELP" ? "motor_help" : "set_motor";
+            break;
+          case 3:
+            action = "set_era";
+            break;
+          case 4:
+            action = "set_km";
+            break;
+          case 5:
+            action = "set_svc";
+            break;
+          case 6:
+            action = "set_fecha";
+            break;
+          case 7:
+            action = "set_hora";
+            break;
+          case 8:
+            action = "conf_booking";
+            break;
+        }
+        return {
+          label: opt.label,
+          callback: action ? await buildCallback(action, opt.value, secret) : "",
+        };
+      });
+
+      const buttons = await Promise.all(keyboardPromises);
+      buttons.forEach((btn, i) => {
+        if (btn.callback) {
+          k.text(btn.label, btn.callback);
+          if (session.paso_actual === 1 && i % 2 === 1) k.row();
+          else if (session.paso_actual === 7 && i % 3 === 2) k.row();
+          else if (
+            [2, 3, 5, 6, 8].includes(session.paso_actual) ||
+            btn.label === "❓ Ayuda"
+          )
+            k.row();
+        }
+      });
+    }
+
+    return await UiManager.safeEditOrReply(ctx, step.message, {
+      reply_markup: k,
       parse_mode: "HTML",
     });
   }
 
   private async handleText(ctx: BorgContext<CoreEnv>, session: EphemeralState) {
+    const core = await this.getCore(ctx);
     if (ctx.message?.text === "📅 Agendar Cita") {
-      await this.updateSession(ctx.env.DB, session.session_id!, {
-        paso_actual: 1,
-      });
-      const step = await this.renderer.renderStepTipo(ctx.env.BORG_SECRET_KEY);
-      return await ctx.reply(step.message, {
-        ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-        parse_mode: "HTML",
-      });
+      const result = await core.handleAction(session, "start_booking", "0");
+      return await this.renderStep(
+        ctx,
+        result.step,
+        ctx.env.BORG_SECRET_KEY,
+        result.newState,
+      );
     }
 
     if (session.paso_actual === 4 && ctx.message?.text) {
@@ -431,17 +231,13 @@ export class BookingOrchestrator {
         return await ctx.reply(
           "❌ Por favor ingresa un número válido para el kilometraje.",
         );
-      await this.updateSession(ctx.env.DB, session.session_id!, {
-        kilometraje: km,
-        paso_actual: 5,
-      });
-      const step = await this.renderer.renderStepServicio(
+      const result = await core.handleAction(session, "set_km", String(km));
+      return await this.renderStep(
+        ctx,
+        result.step,
         ctx.env.BORG_SECRET_KEY,
+        result.newState,
       );
-      return await ctx.reply(step.message, {
-        ...(step.keyboard ? { reply_markup: step.keyboard } : {}),
-        parse_mode: "HTML",
-      });
     }
   }
 }

@@ -38,8 +38,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
-    telegram_user_id INTEGER NOT NULL,
-    telegram_chat_id INTEGER NOT NULL,
+    platform_user_id TEXT NOT NULL,
+    platform_chat_id TEXT NOT NULL,
+    platform TEXT NOT NULL,
     bot_type TEXT NOT NULL,
     estado_flujo TEXT DEFAULT 'iniciado',
     paso_actual INTEGER DEFAULT 0,
@@ -59,8 +60,9 @@ CREATE TABLE IF NOT EXISTS tickets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ticket_id TEXT UNIQUE NOT NULL,
     session_id TEXT,
-    telegram_user_id INTEGER NOT NULL,
-    telegram_chat_id INTEGER NOT NULL,
+    platform_user_id TEXT NOT NULL,
+    platform_chat_id TEXT NOT NULL,
+    platform TEXT NOT NULL,
     vehiculo_tipo TEXT NOT NULL,
     vehiculo_motor TEXT NOT NULL,
     vehiculo_era TEXT NOT NULL,
@@ -198,8 +200,14 @@ CREATE TABLE IF NOT EXISTS admin_notifications (
     fecha_cita TEXT,
     hora_cita TEXT,
     kilometraje INTEGER,
-    telegram_user_id INTEGER,
+    platform_user_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS processed_wa_messages (
+  wa_message_id TEXT PRIMARY KEY,
+  phone_number TEXT NOT NULL,
+  processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS obd_sessions (
@@ -238,6 +246,6 @@ CREATE TABLE IF NOT EXISTS seo_message_queue (
 
 -- 5. INDICES
 CREATE INDEX IF NOT EXISTS idx_ia_jobs_status_pending ON ia_jobs(status) WHERE status = 'PENDING';
-CREATE INDEX IF NOT EXISTS idx_sessions_user_bot ON sessions(telegram_user_id, bot_type);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_bot ON sessions(platform_user_id, platform, bot_type);
 CREATE INDEX IF NOT EXISTS idx_obd_codes_code ON obd_codes(code);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_obd_codes_code_source ON obd_codes(code, source);

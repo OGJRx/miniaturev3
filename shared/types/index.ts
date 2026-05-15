@@ -48,8 +48,9 @@ export interface UbicacionTaller {
 
 export const EphemeralStateSchema = z.object({
   session_id: z.string().optional(),
-  telegram_user_id: z.number(),
-  telegram_chat_id: z.number().optional(),
+  platform_user_id: z.string(),
+  platform_chat_id: z.string().optional(),
+  platform: z.enum(["telegram", "whatsapp"]),
   active_mode: z.string().optional().nullable(),
   estado_flujo: z.string(),
   paso_actual: z.number(),
@@ -77,7 +78,7 @@ export interface AdminNotificationRecord {
   fecha_cita: string;
   hora_cita: string;
   kilometraje: number;
-  telegram_user_id: number;
+  platform_user_id: string;
   created_at?: string;
 }
 
