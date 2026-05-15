@@ -31,7 +31,11 @@ export class WhatsAppBookingOrchestrator {
 
     // Trigger starting or restarting the flow
     if (lowerText.includes("agendar")) {
-      const result = await this.core.handleAction(session, "start_booking", "0");
+      const result = await this.core.handleAction(
+        session,
+        "start_booking",
+        "0",
+      );
       return await this.renderStep(phoneNumber, result.step, result.newState);
     }
 

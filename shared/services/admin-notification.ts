@@ -53,7 +53,7 @@ export class AdminNotificationService {
     env: CoreEnv,
     session: EphemeralState,
     ticketId: string,
-    platform: "telegram" | "whatsapp",
+    _platform: "telegram" | "whatsapp",
   ): Promise<void> {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
@@ -84,7 +84,6 @@ export class AdminNotificationService {
       `[AdminNotif] Dispatched ${successCount}/${adminIds.length} for ticket:`,
       ticketId,
     );
-
 
     const service = new AdminNotificationService(env.DB);
     await service.saveNotification({
