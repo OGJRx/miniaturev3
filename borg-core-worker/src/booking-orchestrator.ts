@@ -97,15 +97,19 @@ export class BookingOrchestrator {
 
   private async renderStep(
     ctx: BorgContext<CoreEnv>,
-    step: { message: string; options?: { label: string; value: string }[] },
+    step: {
+      status: "PROMPT" | "CONFIRMED" | "CANCELLED" | "EMPTY";
+      message: string;
+      options?: { label: string; value: string }[];
+    },
     secret: string,
     session: EphemeralState,
   ) {
-    if (step.message === "CONFIRMED") {
+    if (step.status === "CONFIRMED") {
       return await this.handleConfirmed(ctx, step, session);
     }
 
-    if (step.message === "CANCELLED") {
+    if (step.status === "CANCELLED") {
       return await UiManager.safeEditOrReply(ctx, "❌ <b>Cita cancelada.</b>", {
         parse_mode: "HTML",
       });

@@ -53,7 +53,7 @@ export class AdminNotificationService {
     env: CoreEnv,
     session: EphemeralState,
     ticketId: string,
-    platform: "telegram" | "whatsapp",
+    _platform: "telegram" | "whatsapp",
   ): Promise<void> {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
@@ -84,24 +84,6 @@ export class AdminNotificationService {
       `[AdminNotif] Dispatched ${successCount}/${adminIds.length} for ticket:`,
       ticketId,
     );
-
-    // If platform is WhatsApp, send confirmation to client via WhatsApp
-    if (platform === "whatsapp") {
-      const { WhatsAppApi } = await import("../whatsapp/whatsapp-api");
-      const waApi = new WhatsAppApi(env);
-      const clientMsg =
-        `✅ *Cita Confirmada*\n\n` +
-        `📋 *Ticket:* \`${ticketId}\`\n` +
-        `🚗 *Vehículo:* ${session.vehiculo_tipo}\n` +
-        `🗓️ *Fecha:* ${session.fecha_cita}\n` +
-        `⏰ *Hora:* ${session.hora_cita}\n\n` +
-        `¡Te esperamos!`;
-      await waApi
-        .sendMessage(session.platform_user_id, clientMsg)
-        .catch((e) => {
-          console.error("[AdminNotif] Failed to send WhatsApp to client", e);
-        });
-    }
 
     const service = new AdminNotificationService(env.DB);
     await service.saveNotification({
