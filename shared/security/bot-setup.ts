@@ -113,11 +113,3 @@ export function parseBotInfo(info?: string): unknown {
 export function isUpdate(update: unknown): update is Update {
   return typeof update === "object" && update !== null && "update_id" in update;
 }
-
-export class TelegramApiFactory {
-  static create(e: CoreEnv, t: "frontend" | "backend" = "frontend"): Api {
-    return new Api(
-      t === "frontend" ? e.FRONTEND_BOT_TOKEN : e.BACKEND_BOT_TOKEN,
-    );
-  }
-}

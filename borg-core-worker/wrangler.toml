@@ -23,6 +23,10 @@ TALLER_LATITUD = "10.48855974863415"
 TALLER_LONGITUD = "-66.88157077878705"
 TALLER_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=10.48855974863415,-66.88157077878705&query_place_id=Autodiagnostico+JR"
 
+# WhatsApp Config
+WHATSAPP_PHONE_NUMBER_ID = "1092822373921606"
+WHATSAPP_API_VERSION = "v25.0"
+
 
 [[d1_databases]]
 binding = "DB"

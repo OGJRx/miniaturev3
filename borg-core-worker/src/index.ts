@@ -49,7 +49,12 @@ async function routeRequest(
   }
 
   const middlewares = [];
-  if (url.pathname.includes("/webhook/")) middlewares.push(webhookValidator);
+  if (
+    url.pathname.includes("/webhook/") &&
+    !url.pathname.includes("/webhook/whatsapp")
+  ) {
+    middlewares.push(webhookValidator);
+  }
   if (["/calendar", "/admin", "/api/appointments"].includes(url.pathname))
     middlewares.push(calendarAuthMiddleware);
   if (url.pathname.includes("/backend") || url.pathname.includes("/admin"))

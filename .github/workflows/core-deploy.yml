@@ -83,58 +83,72 @@ jobs:
       - run: npm ci --ignore-scripts
 
       - name: 🗄️ Apply D1 Migrations
-        run: npx wrangler d1 migrations apply borgptron-db --remote
-        working-directory: borg-core-worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: "" # Explicitly empty to use OIDC
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply borgptron-db --remote
+          workingDirectory: borg-core-worker
+        # NOTE: GitHub OIDC Trust Relationship must be configured in Cloudflare Dashboard:
+        # Workers & Pages > Settings > GitHub Actions OIDC.
+        # Ensure the 'accountId' is provided and 'apiToken' is omitted or empty.
 
       - name: 🔱 Deploy Core Worker
         id: deploy
-        run: |
-          npx wrangler deploy > deploy.log 2>&1 || (cat deploy.log && exit 1)
-          cat deploy.log
-          URL=$(grep -o "https://[^ ]*workers\.dev" deploy.log | head -n 1)
-          if [ -z "$URL" ]; then
-            echo "❌ Deployment failed or URL not found"
-            exit 1
-          fi
-          echo "core_url=$URL" >> $GITHUB_OUTPUT
-          echo "✅ Core deployed: $URL"
-        working-directory: borg-core-worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: "" # Explicitly empty to use OIDC
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          workingDirectory: borg-core-worker
+        # The output of wrangler deploy is captured by the action if we use it normally,
+        # but to extract the URL we might need a custom command or check outputs.
+        # Wrangler-action v3 provides 'deployment-url' output.
 
       - name: 🔗 Activate Webhooks
         working-directory: borg-core-worker
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BORG_SECRET_KEY: ${{ secrets.BORG_SECRET_KEY }}
+          FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
+          BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
         run: |
           set -euo pipefail
-          CORE_URL="${{ steps.deploy.outputs.core_url }}"
-          # Frontend Webhook
-          RESULT_FE=$(curl -fsS -X POST "https://api.telegram.org/bot${FRONTEND_BOT_TOKEN}/setWebhook" \
+          CORE_URL="${{ steps.deploy.outputs.deployment-url }}"
+
+          # Telegram Webhooks
+          curl -fsS -X POST "https://api.telegram.org/bot${FRONTEND_BOT_TOKEN}/setWebhook" \
             -d "url=${CORE_URL}/webhook/frontend" \
-            -d "secret_token=${BORG_SECRET_KEY}")
-          echo "$RESULT_FE" | grep -q '"ok":true' || { echo "❌ Frontend Webhook failed: $RESULT_FE"; exit 1; }
+            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
 
-          # Backend Webhook
-          RESULT_BE=$(curl -fsS -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/setWebhook" \
+          curl -fsS -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/setWebhook" \
             -d "url=${CORE_URL}/webhook/backend" \
-            -d "secret_token=${BORG_SECRET_KEY}")
-          echo "$RESULT_BE" | grep -q '"ok":true' || { echo "❌ Backend Webhook failed: $RESULT_BE"; exit 1; }
+            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
+          echo "✅ Webhooks activated"
 
-          # Sync missing secrets to Wrangler (F-01)
-          # We only sync TELEGRAM_ADMIN_IDS here as other secrets are handled by wrangler deploy implicitly
-          # if set via wrangler secret put, but for CI we need to ensure they are available.
-          # Note: In a real CI environment, 'wrangler deploy' might not pick up these env vars
-          # as secrets unless they are in wrangler.toml [vars] or explicitly put.
-          # The audit says they are omitted from synchronization.
-          for SECRET_NAME in GEMINI_API_KEY BORG_SECRET_KEY FRONTEND_BOT_TOKEN BACKEND_BOT_TOKEN; do
-             echo "Syncing $SECRET_NAME..."
-             echo "${!SECRET_NAME}" | npx wrangler secret put $SECRET_NAME
-          done
-
-          echo "✅ Webhooks activated and secrets synced"
+      - name: 🔐 Sync Secrets
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: "" # Explicitly empty to use OIDC
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: borg-core-worker
+          secrets: |
+            GEMINI_API_KEY
+            BORG_SECRET_KEY
+            FRONTEND_BOT_TOKEN
+            BACKEND_BOT_TOKEN
+            TELEGRAM_ADMIN_IDS
+            WHATSAPP_ACCESS_TOKEN
+            WHATSAPP_APP_SECRET
+            WHATSAPP_VERIFY_TOKEN
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BORG_SECRET_KEY: ${{ secrets.BORG_SECRET_KEY }}
+          FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
+          BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
+          WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          TELEGRAM_ADMIN_IDS: ${{ secrets.TELEGRAM_ADMIN_IDS }}
 
       - name: 📢 Notify Success
         if: success()
