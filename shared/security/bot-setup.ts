@@ -113,4 +113,3 @@ export function parseBotInfo(info?: string): unknown {
 export function isUpdate(update: unknown): update is Update {
   return typeof update === "object" && update !== null && "update_id" in update;
 }
-
