@@ -187,7 +187,99 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
   if (response.success) await UiManager.safeReply(ctx, response.text);
 }
 
-const CALENDAR_HTML = `<!DOCTYPE html><html>...</html>`;
+const CALENDAR_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Titanium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .appointment-card { background: #1e293b; border-left: 4px solid #38bdf8; }
+        .status-pendiente { color: #ffb703; }
+        .status-confirmado { color: #2ecc71; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400">🔱 Titanium Core</h1>
+                <p class="text-slate-400">Panel de Control de Citas</p>
+            </div>
+            <button onclick="fetchAppointments()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+                Actualizar
+            </button>
+        </header>
+
+        <div id="appointments-container" class="space-y-4">
+            <div class="flex justify-center py-12">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchAppointments() {
+            const container = document.getElementById('appointments-container');
+            try {
+                const res = await fetch('/api/appointments');
+                if (!res.ok) throw new Error('No autorizado');
+                const data = await res.json();
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="text-center py-12 text-slate-500 italic">No hay citas programadas</div>';
+                    return;
+                }
+
+                // Group by date
+                const grouped = data.reduce((acc, appt) => {
+                    const date = appt.fecha_cita;
+                    if (!acc[date]) acc[date] = [];
+                    acc[date].push(appt);
+                    return acc;
+                }, {});
+
+                container.innerHTML = Object.entries(grouped)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, appts]) => {
+                        const dateBadge = '<span class="bg-slate-800 px-3 py-1 rounded-md">' + date + '</span>';
+                        const cards = appts.sort((a, b) => a.hora_cita.localeCompare(b.hora_cita)).map(appt => {
+                            return '<div class="appointment-card p-4 rounded-lg shadow-lg flex justify-between items-center">' +
+                                        '<div>' +
+                                            '<div class="flex items-center gap-2">' +
+                                                '<span class="text-blue-300 font-mono font-bold text-lg">' + appt.hora_cita + '</span>' +
+                                                '<span class="text-slate-500">|</span>' +
+                                                '<span class="font-semibold">' + appt.vehiculo_tipo + '</span>' +
+                                            '</div>' +
+                                            '<div class="text-slate-400 text-sm mt-1">' + appt.servicio_solicitado + '</div>' +
+                                        '</div>' +
+                                        '<div class="text-right">' +
+                                            '<div class="text-xs uppercase font-bold tracking-wider status-' + appt.estado + '">' + appt.estado + '</div>' +
+                                            '<div class="text-[10px] text-slate-600 mt-1 font-mono">' + appt.ticket_id + '</div>' +
+                                        '</div>' +
+                                    '</div>';
+                        }).join('');
+
+                        return '<div class="mb-6">' +
+                                    '<h2 class="text-lg font-semibold text-slate-300 mb-3 flex items-center">' + dateBadge + '</h2>' +
+                                    '<div class="grid gap-3">' + cards + '</div>' +
+                                '</div>';
+                    }).join('');
+
+            } catch (err) {
+                container.innerHTML = '<div class="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg text-center">' +
+                    '⚠️ Error: ' + err.message + '. Asegúrate de estar autenticado.' +
+                '</div>';
+            }
+        }
+
+        fetchAppointments();
+    </script>
+</body>
+</html>`;
 
 async function handleCalendarMiniApp(
   req: Request,

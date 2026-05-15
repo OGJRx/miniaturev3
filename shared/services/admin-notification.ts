@@ -10,7 +10,7 @@ export class AdminNotificationService {
     await this.db
       .prepare(
         "INSERT INTO admin_notifications (ticket_id, vehiculo_tipo, vehiculo_motor, vehiculo_era, " +
-          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, telegram_user_id) " +
+          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, platform_user_id) " +
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
@@ -22,7 +22,7 @@ export class AdminNotificationService {
         record.fecha_cita,
         record.hora_cita,
         record.kilometraje,
-        record.telegram_user_id,
+        record.platform_user_id,
       )
       .run();
   }
@@ -34,7 +34,7 @@ export class AdminNotificationService {
     const res = await this.db
       .prepare(
         "SELECT id, ticket_id, vehiculo_tipo, vehiculo_motor, vehiculo_era, " +
-          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, telegram_user_id, created_at " +
+          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, platform_user_id, created_at " +
           "FROM admin_notifications ORDER BY created_at DESC LIMIT ? OFFSET ?",
       )
       .bind(limit, offset)
@@ -53,6 +53,7 @@ export class AdminNotificationService {
     env: CoreEnv,
     session: EphemeralState,
     ticketId: string,
+    platform: "telegram" | "whatsapp",
   ): Promise<void> {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
@@ -84,6 +85,24 @@ export class AdminNotificationService {
       ticketId,
     );
 
+    // If platform is WhatsApp, send confirmation to client via WhatsApp
+    if (platform === "whatsapp") {
+      const { WhatsAppApi } = await import("../whatsapp/whatsapp-api");
+      const waApi = new WhatsAppApi(env);
+      const clientMsg =
+        `✅ *Cita Confirmada*\n\n` +
+        `📋 *Ticket:* \`${ticketId}\`\n` +
+        `🚗 *Vehículo:* ${session.vehiculo_tipo}\n` +
+        `🗓️ *Fecha:* ${session.fecha_cita}\n` +
+        `⏰ *Hora:* ${session.hora_cita}\n\n` +
+        `¡Te esperamos!`;
+      await waApi
+        .sendMessage(session.platform_user_id, clientMsg)
+        .catch((e) => {
+          console.error("[AdminNotif] Failed to send WhatsApp to client", e);
+        });
+    }
+
     const service = new AdminNotificationService(env.DB);
     await service.saveNotification({
       ticket_id: ticketId,
@@ -94,7 +113,7 @@ export class AdminNotificationService {
       fecha_cita: session.fecha_cita || "",
       hora_cita: session.hora_cita || "",
       kilometraje: session.kilometraje ?? 0,
-      telegram_user_id: session.telegram_user_id ?? 0,
+      platform_user_id: session.platform_user_id,
     });
   }
 }

@@ -28,8 +28,8 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: write
+      id-token: write
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
     steps:
@@ -47,12 +47,12 @@ jobs:
       - name: 🔐 Verify Cloudflare authentication
         working-directory: borg-core-worker
         run: |
-          echo "🔍 Verificando token de Cloudflare..."
+          echo "🔍 Verificando OIDC con Cloudflare..."
           npx wrangler whoami
           echo "📦 Verificando worker desplegado..."
           npx wrangler deployments list || echo "⚠️ No se pudo listar deployments (posible falta de permisos 'Workers Scripts:Read')"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ""
 
       - name: 📁 Create logs directory
         run: mkdir -p logs
@@ -83,7 +83,7 @@ jobs:
             echo "# No logs captured - $(date -Iseconds)" > "${LOG_FILE}"
           fi
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ""
 
       - name: 📤 Upload logs artifact
         uses: actions/upload-artifact@v5

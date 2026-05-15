@@ -1,0 +1,270 @@
+import { D1Database } from "@cloudflare/workers-types";
+import { EphemeralState } from "../types";
+import { SlotValidator } from "./slot-validator";
+import { TicketCreator } from "./ticket-creator";
+import {
+  VEHICLE_OPTIONS,
+  KILOMETRAJE_RANGES,
+  SERVICE_OPTIONS,
+} from "../types/constants";
+import { formatDateISO, formatDateFriendly } from "../ui/formatters";
+import { getVenezuelaNow } from "../ui/timezone";
+
+export interface BookingStep {
+  message: string;
+  options?: { label: string; value: string }[];
+}
+
+export class BookingCoreService {
+  constructor(private db: D1Database) {}
+
+  async getSession(
+    platformUserId: string,
+    platformChatId: string,
+    platform: "telegram" | "whatsapp",
+    botType: "frontend" | "backend" = "frontend",
+  ): Promise<EphemeralState> {
+    const res = await this.db
+      .prepare(
+        "SELECT session_id, platform_user_id, platform_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE platform_user_id = ? AND platform = ? AND bot_type = ? ORDER BY updated_at DESC LIMIT 1",
+      )
+      .bind(platformUserId, platform, botType)
+      .first<EphemeralState>();
+
+    if (res) return res;
+
+    const sessionId = `S-${Date.now()}-${platformUserId.slice(-4)}`;
+    const newState: EphemeralState = {
+      session_id: sessionId,
+      platform_user_id: platformUserId,
+      platform_chat_id: platformChatId,
+      platform: platform,
+      estado_flujo: "iniciado",
+      paso_actual: 0,
+      version: 1,
+      bot_type: botType,
+    };
+
+    await this.db
+      .prepare(
+        "INSERT INTO sessions (session_id, platform_user_id, platform_chat_id, platform, bot_type, estado_flujo, paso_actual) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      )
+      .bind(
+        sessionId,
+        platformUserId,
+        platformChatId,
+        platform,
+        botType,
+        "iniciado",
+        0,
+      )
+      .run();
+
+    return newState;
+  }
+
+  async updateSession(sessionId: string, data: Partial<EphemeralState>) {
+    const allowedKeys: (keyof EphemeralState)[] = [
+      "active_mode",
+      "estado_flujo",
+      "paso_actual",
+      "vehiculo_tipo",
+      "vehiculo_motor",
+      "vehiculo_era",
+      "kilometraje",
+      "servicio_solicitado",
+      "fecha_cita",
+      "hora_cita",
+      "bay_number",
+    ];
+    const entries = Object.entries(data).filter(([k]) =>
+      allowedKeys.includes(k as keyof EphemeralState),
+    );
+    if (entries.length === 0) return;
+
+    const sets = entries.map(([k]) => `${k} = ?`).join(", ");
+    const values = entries.map(([, v]) => v);
+
+    await this.db
+      .prepare(
+        `UPDATE sessions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?`,
+      )
+      .bind(...values, sessionId)
+      .run();
+  }
+
+  async handleAction(
+    session: EphemeralState,
+    action: string,
+    value: string,
+  ): Promise<{ step: BookingStep; newState: EphemeralState }> {
+    const newState = { ...session };
+
+    switch (action) {
+      case "start_booking":
+        newState.paso_actual = 1;
+        break;
+      case "set_tipo":
+        newState.vehiculo_tipo = value;
+        newState.paso_actual = 2;
+        break;
+      case "set_motor":
+        newState.vehiculo_motor = value;
+        newState.paso_actual = 3;
+        break;
+      case "set_era":
+        newState.vehiculo_era = value;
+        newState.paso_actual = 4;
+        break;
+      case "set_km":
+        newState.kilometraje = parseInt(value, 10);
+        newState.paso_actual = 5;
+        break;
+      case "set_svc":
+        newState.servicio_solicitado = value;
+        newState.paso_actual = 6;
+        break;
+      case "set_fecha":
+        newState.fecha_cita = value;
+        newState.paso_actual = 7;
+        break;
+      case "set_hora":
+        newState.hora_cita = value;
+        newState.paso_actual = 8;
+        break;
+      case "conf_booking":
+        if (value === "yes") {
+          const creator = new TicketCreator(this.db);
+          const res = await creator.createTicket(newState);
+          newState.estado_flujo = "confirmado";
+          // We return the ticket_id in a special field or just part of message
+          return {
+            step: {
+              message: "CONFIRMED", // Orchestrator handles final UI
+              options: [{ label: "ticket_id", value: res.ticket_id }],
+            },
+            newState,
+          };
+        } else {
+          newState.estado_flujo = "cancelado";
+          return {
+            step: { message: "CANCELLED" },
+            newState,
+          };
+        }
+    }
+
+    await this.updateSession(session.session_id!, newState);
+    const step = await this.renderStep(newState);
+    return { step, newState };
+  }
+
+  async renderStep(s: EphemeralState): Promise<BookingStep> {
+    switch (s.paso_actual) {
+      case 1:
+        return {
+          message:
+            "🚗 <b>Selecciona el tipo de vehículo:</b>\n\n" +
+            "Elige la categoría que mejor describa tu vehículo. Esto nos ayuda a asignar la bahía con la capacidad y herramientas adecuadas.",
+          options: VEHICLE_OPTIONS.TYPES.map((t) => ({ label: t, value: t })),
+        };
+      case 2:
+        return {
+          message:
+            "⚙️ <b>Selecciona el tipo de motor:</b>\n\n" +
+            "Indica la tecnología de propulsión de tu vehículo. Si no estás seguro, usa el botón de ayuda.",
+          options: [
+            ...VEHICLE_OPTIONS.MOTORS.map((m) => ({ label: m, value: m })),
+            { label: "❓ Ayuda", value: "HELP" },
+          ],
+        };
+      case 3:
+        return {
+          message:
+            "📅 <b>Selecciona el rango de año:</b>\n\n" +
+            "Elige el periodo de fabricación aproximado de tu vehículo.",
+          options: VEHICLE_OPTIONS.ERAS.map((e) => ({ label: e, value: e })),
+        };
+      case 4:
+        return {
+          message: "📟 <b>Selecciona el rango de kilometraje:</b>",
+          options: KILOMETRAJE_RANGES.map((r) => ({
+            label: r.label,
+            value: r.value.toString(),
+          })),
+        };
+      case 5:
+        return {
+          message:
+            "🛠️ <b>Selecciona el servicio solicitado:</b>\n\n" +
+            "Contamos con servicios especializados para cada necesidad de tu vehículo.",
+          options: SERVICE_OPTIONS.map((s) => ({ label: s, value: s })),
+        };
+      case 6: {
+        const today = getVenezuelaNow();
+        const todayISO = formatDateISO(today);
+        const options = [];
+        let count = 0;
+        for (let i = 0; i <= 14 && count < 6; i++) {
+          const d = new Date(today.getTime() + i * 86400000);
+          const dayOfWeek = new Date(
+            d.toLocaleString("en-US", { timeZone: "America/Caracas" }),
+          ).getDay();
+
+          if ([1, 2, 3, 4, 5].includes(dayOfWeek)) {
+            const iso = formatDateISO(d);
+            const friendly = formatDateFriendly(d);
+            options.push({
+              label:
+                iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
+              value: iso,
+            });
+            count++;
+          }
+        }
+        return {
+          message: "📅 <b>Selecciona una fecha:</b>",
+          options,
+        };
+      }
+      case 7: {
+        const validator = new SlotValidator(this.db);
+        const slots = await validator.getAvailableSlots(s.fecha_cita!);
+        const available = slots.filter((sl) => sl.available);
+        if (available.length === 0) {
+          return {
+            message:
+              "❌ No hay horas disponibles para esta fecha. El horario laboral ya ha concluido o todos los slots están ocupados.",
+          };
+        }
+        return {
+          message: `⏰ <b>Horas disponibles para ${s.fecha_cita}:</b>`,
+          options: available.map((sl) => ({ label: sl.hora, value: sl.hora })),
+        };
+      }
+      case 8: {
+        const fechaDisplay = s.fecha_cita
+          ? formatDateFriendly(new Date(s.fecha_cita + "T12:00:00"))
+          : "N/A";
+        return {
+          message:
+            `✅ <b>Resumen de tu Cita:</b>\n\n` +
+            `🚗 Tipo: ${s.vehiculo_tipo || "N/A"}\n` +
+            `⚙️ Motor: ${s.vehiculo_motor || "N/A"}\n` +
+            `📅 Era: ${s.vehiculo_era || "N/A"}\n` +
+            `📟 KM: ${s.kilometraje}\n` +
+            `🛠️ Servicio: ${s.servicio_solicitado || "N/A"}\n` +
+            `🗓️ Fecha: ${fechaDisplay}\n` +
+            `⏰ Hora: ${s.hora_cita || "N/A"}\n\n` +
+            `¿Deseas confirmar esta cita?`,
+          options: [
+            { label: "✅ Confirmar Cita", value: "yes" },
+            { label: "❌ Cancelar", value: "no" },
+          ],
+        };
+      }
+      default:
+        return { message: "INICIO" };
+    }
+  }
+}
