@@ -27,15 +27,23 @@ export class WhatsAppBookingOrchestrator {
       "whatsapp",
     );
 
-    const lowerText = text.toLowerCase();
-    if (lowerText.includes("agendar") || lowerText === "hola" || text === "1") {
-      if (session.paso_actual === 0 || lowerText.includes("agendar")) {
-        const result = await this.core.handleAction(
-          session,
-          "start_booking",
-          "0",
+    const lowerText = text.toLowerCase().trim();
+
+    // Trigger starting or restarting the flow
+    if (lowerText.includes("agendar")) {
+      const result = await this.core.handleAction(session, "start_booking", "0");
+      return await this.renderStep(phoneNumber, result.step, result.newState);
+    }
+
+    // Initial greeting or general "hola"
+    if (lowerText === "hola" || session.paso_actual === 0) {
+      if (session.paso_actual === 0) {
+        return await this.api.sendMessage(
+          phoneNumber,
+          "🔱 *Bienvenido al Taller Titanium*\n\n" +
+            "Soy Borg, tu asistente de servicio automotriz.\n\n" +
+            "Escribe *Agendar* para iniciar tu cita o solicitar información.",
         );
-        return await this.renderStep(phoneNumber, result.step, result.newState);
       }
     }
 
@@ -113,10 +121,14 @@ export class WhatsAppBookingOrchestrator {
 
   private async renderStep(
     phoneNumber: string,
-    step: { message: string; options?: { label: string; value: string }[] },
+    step: {
+      status: "PROMPT" | "CONFIRMED" | "CANCELLED" | "EMPTY";
+      message: string;
+      options?: { label: string; value: string }[];
+    },
     session: EphemeralState,
   ) {
-    if (step.message === "CONFIRMED") {
+    if (step.status === "CONFIRMED") {
       const ticketId = step.options?.find(
         (o) => o.label === "ticket_id",
       )?.value;
@@ -147,7 +159,7 @@ export class WhatsAppBookingOrchestrator {
       return await this.api.sendMessage(phoneNumber, summary);
     }
 
-    if (step.message === "CANCELLED") {
+    if (step.status === "CANCELLED") {
       return await this.api.sendMessage(phoneNumber, "❌ *Cita cancelada.*");
     }
 

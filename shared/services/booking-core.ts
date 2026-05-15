@@ -1,6 +1,6 @@
 import { D1Database } from "@cloudflare/workers-types";
 import { EphemeralState } from "../types";
-import { SlotValidator } from "./slot-validator";
+import { SlotValidator, validateAppointmentSlot } from "./slot-validator";
 import { TicketCreator } from "./ticket-creator";
 import {
   VEHICLE_OPTIONS,
@@ -11,6 +11,7 @@ import { formatDateISO, formatDateFriendly } from "../ui/formatters";
 import { getVenezuelaNow } from "../ui/timezone";
 
 export interface BookingStep {
+  status: "PROMPT" | "CONFIRMED" | "CANCELLED" | "EMPTY";
   message: string;
   options?: { label: string; value: string }[];
 }
@@ -124,14 +125,62 @@ export class BookingCoreService {
         newState.servicio_solicitado = value;
         newState.paso_actual = 6;
         break;
-      case "set_fecha":
+      case "set_fecha": {
+        const validator = new SlotValidator(this.db);
+        const slots = await validator.getAvailableSlots(value);
+        const available = slots.filter((sl) => sl.available);
+        if (available.length === 0) {
+          const currentStep = await this.renderStep(newState);
+          return {
+            step: {
+              ...currentStep,
+              message:
+                `❌ No hay horas disponibles para la fecha seleccionada (${value}). Por favor elige otro día.\n\n` +
+                currentStep.message,
+            },
+            newState,
+          };
+        }
         newState.fecha_cita = value;
         newState.paso_actual = 7;
         break;
-      case "set_hora":
+      }
+      case "set_hora": {
+        const validation = validateAppointmentSlot(newState.fecha_cita!, value);
+        if (!validation.valid) {
+          const currentStep = await this.renderStep(newState);
+          return {
+            step: {
+              ...currentStep,
+              message:
+                `❌ El horario seleccionado ya no está disponible. Por favor elige otro.\n\n` +
+                currentStep.message,
+            },
+            newState,
+          };
+        }
+        // Double check with DB
+        const validator = new SlotValidator(this.db);
+        const slots = await validator.getAvailableSlots(newState.fecha_cita!);
+        const isAvailable = slots.some(
+          (sl) => sl.hora === value && sl.available,
+        );
+        if (!isAvailable) {
+          const currentStep = await this.renderStep(newState);
+          return {
+            step: {
+              ...currentStep,
+              message:
+                `❌ El horario seleccionado (${value}) ya ha sido reservado. Por favor elige otro.\n\n` +
+                currentStep.message,
+            },
+            newState,
+          };
+        }
         newState.hora_cita = value;
         newState.paso_actual = 8;
         break;
+      }
       case "conf_booking":
         if (value === "yes") {
           const creator = new TicketCreator(this.db);
@@ -140,6 +189,7 @@ export class BookingCoreService {
           // We return the ticket_id in a special field or just part of message
           return {
             step: {
+              status: "CONFIRMED",
               message: "CONFIRMED", // Orchestrator handles final UI
               options: [{ label: "ticket_id", value: res.ticket_id }],
             },
@@ -148,7 +198,7 @@ export class BookingCoreService {
         } else {
           newState.estado_flujo = "cancelado";
           return {
-            step: { message: "CANCELLED" },
+            step: { status: "CANCELLED", message: "CANCELLED" },
             newState,
           };
         }
@@ -163,6 +213,7 @@ export class BookingCoreService {
     switch (s.paso_actual) {
       case 1:
         return {
+          status: "PROMPT",
           message:
             "🚗 <b>Selecciona el tipo de vehículo:</b>\n\n" +
             "Elige la categoría que mejor describa tu vehículo. Esto nos ayuda a asignar la bahía con la capacidad y herramientas adecuadas.",
@@ -170,6 +221,7 @@ export class BookingCoreService {
         };
       case 2:
         return {
+          status: "PROMPT",
           message:
             "⚙️ <b>Selecciona el tipo de motor:</b>\n\n" +
             "Indica la tecnología de propulsión de tu vehículo. Si no estás seguro, usa el botón de ayuda.",
@@ -180,6 +232,7 @@ export class BookingCoreService {
         };
       case 3:
         return {
+          status: "PROMPT",
           message:
             "📅 <b>Selecciona el rango de año:</b>\n\n" +
             "Elige el periodo de fabricación aproximado de tu vehículo.",
@@ -187,6 +240,7 @@ export class BookingCoreService {
         };
       case 4:
         return {
+          status: "PROMPT",
           message: "📟 <b>Selecciona el rango de kilometraje:</b>",
           options: KILOMETRAJE_RANGES.map((r) => ({
             label: r.label,
@@ -195,6 +249,7 @@ export class BookingCoreService {
         };
       case 5:
         return {
+          status: "PROMPT",
           message:
             "🛠️ <b>Selecciona el servicio solicitado:</b>\n\n" +
             "Contamos con servicios especializados para cada necesidad de tu vehículo.",
@@ -223,6 +278,7 @@ export class BookingCoreService {
           }
         }
         return {
+          status: "PROMPT",
           message: "📅 <b>Selecciona una fecha:</b>",
           options,
         };
@@ -233,11 +289,13 @@ export class BookingCoreService {
         const available = slots.filter((sl) => sl.available);
         if (available.length === 0) {
           return {
+            status: "PROMPT",
             message:
               "❌ No hay horas disponibles para esta fecha. El horario laboral ya ha concluido o todos los slots están ocupados.",
           };
         }
         return {
+          status: "PROMPT",
           message: `⏰ <b>Horas disponibles para ${s.fecha_cita}:</b>`,
           options: available.map((sl) => ({ label: sl.hora, value: sl.hora })),
         };
@@ -247,6 +305,7 @@ export class BookingCoreService {
           ? formatDateFriendly(new Date(s.fecha_cita + "T12:00:00"))
           : "N/A";
         return {
+          status: "PROMPT",
           message:
             `✅ <b>Resumen de tu Cita:</b>\n\n` +
             `🚗 Tipo: ${s.vehiculo_tipo || "N/A"}\n` +
@@ -264,7 +323,7 @@ export class BookingCoreService {
         };
       }
       default:
-        return { message: "INICIO" };
+        return { status: "EMPTY", message: "INICIO" };
     }
   }
 }
