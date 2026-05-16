@@ -27,15 +27,15 @@ export class WhatsAppApi {
     try {
       const res = await db
         .prepare(
-          "INSERT INTO rate_limits (key, window_end, count) VALUES (?, ?, 1) " +
-            "ON CONFLICT(key) DO UPDATE SET count = CASE WHEN window_end < ? THEN 1 ELSE count + 1 END, " +
+          "INSERT INTO rate_limits (identity_key, window_start, window_end, request_count) VALUES (?, ?, ?, 1) " +
+            "ON CONFLICT(identity_key) DO UPDATE SET request_count = CASE WHEN window_end < ? THEN 1 ELSE request_count + 1 END, " +
             "window_end = CASE WHEN window_end < ? THEN ? ELSE window_end END " +
-            "RETURNING count, window_end",
+            "RETURNING request_count, window_end",
         )
-        .bind(to, windowStart, windowStart, windowStart, windowStart)
-        .first<{ count: number }>();
+        .bind(to, windowStart, windowStart, windowStart, windowStart, windowStart)
+        .first<{ request_count: number }>();
 
-      if (res && res.count > 3) return false;
+      if (res && res.request_count > 3) return false;
     } catch (e) {
       this.logger?.error("whatsapp_api", `Rate limit DB error: ${e}`);
     }

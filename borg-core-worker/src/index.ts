@@ -85,7 +85,7 @@ async function routeRequest(
   } else {
     const nonce = response.headers.get("X-Borg-Nonce");
     const scriptSrc = nonce ? `'nonce-${nonce}'` : "'self'";
-    const styleSrc = nonce ? `'nonce-${nonce}'` : "'self' 'unsafe-inline'";
+    const styleSrc = nonce ? `'nonce-${nonce}'` : "'self'";
     response.headers.set(
       "Content-Security-Policy",
       `default-src 'self'; style-src 'self' ${styleSrc}; font-src https://fonts.gstatic.com; script-src 'self' ${scriptSrc}; connect-src 'self'; frame-ancestors 'none'`,

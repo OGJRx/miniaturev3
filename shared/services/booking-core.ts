@@ -217,12 +217,15 @@ export class BookingCoreService {
             };
           }
           newState.estado_flujo = "confirmado";
+          if (!res.ticket_id) {
+            throw new Error("ticket_id missing after successful booking");
+          }
           // We return the ticket_id in a special field or just part of message
           return {
             step: {
               status: "CONFIRMED",
               message: "CONFIRMED", // Orchestrator handles final UI
-              options: [{ label: "ticket_id", value: res.ticket_id! }],
+              options: [{ label: "ticket_id", value: res.ticket_id }],
             },
             newState,
           };
