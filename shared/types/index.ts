@@ -17,7 +17,23 @@ export type BorgContextFlavor<T> = {
 
 export type BorgContext<T> = Context & BorgContextFlavor<T>;
 
-export type UiContext = Context & { logger?: BorgLogger };
+export interface MessageCapable {
+  reply(
+    text: string,
+    other?: Record<string, unknown> | undefined,
+  ): Promise<unknown>;
+  editMessageText(
+    text: string,
+    other?: Record<string, unknown> | undefined,
+  ): Promise<unknown>;
+  callbackQuery?:
+    | {
+        message?: unknown | undefined;
+      }
+    | undefined;
+}
+
+export type UiContext = Context & MessageCapable & { logger?: BorgLogger };
 
 export interface CoreEnv {
   TELEGRAM_ADMIN_IDS: string;

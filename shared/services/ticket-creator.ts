@@ -7,10 +7,13 @@ export class TicketCreator {
   async createTicket(
     s: EphemeralState,
   ): Promise<{ success: boolean; ticket_id: string }> {
+    if (!s.hora_cita || !s.servicio_solicitado) {
+      throw new Error("Missing required fields for ticket creation");
+    }
     const ticket_id = `T-${Date.now()}`;
     const hora_fin = calculateEndTime(
-      s.hora_cita!,
-      SERVICE_DURATIONS[s.servicio_solicitado!] || 60,
+      s.hora_cita,
+      SERVICE_DURATIONS[s.servicio_solicitado] || 60,
     );
 
     await this.db

@@ -137,10 +137,17 @@ export class BookingOrchestrator {
     session: EphemeralState,
   ) {
     const ticketId = step.options?.find((o) => o.label === "ticket_id")?.value;
+    if (!ticketId) {
+      return await UiManager.safeEditOrReply(
+        ctx,
+        "⚠️ Error al generar ticket. Contacte soporte.",
+      );
+    }
+
     const notifPromise = AdminNotificationService.dispatch(
       ctx.env,
       session,
-      ticketId!,
+      ticketId,
       "telegram",
     );
     ctx.executionContext.waitUntil(notifPromise);
@@ -157,7 +164,7 @@ export class BookingOrchestrator {
 
     const summary =
       `✅ <b>¡Cita confirmada!</b>\n\n` +
-      `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId!)}</code>\n` +
+      `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
       `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
       `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
       `📟 <b>Kilometraje:</b> ${session.kilometraje ?? "N/A"} km\n` +

@@ -148,7 +148,14 @@ export class BookingCoreService {
         break;
       }
       case "set_hora": {
-        const validation = validateAppointmentSlot(newState.fecha_cita!, value);
+        if (!newState.fecha_cita) {
+          newState.paso_actual = 6;
+          return {
+            step: await this.renderStep(newState),
+            newState,
+          };
+        }
+        const validation = validateAppointmentSlot(newState.fecha_cita, value);
         if (!validation.valid) {
           const currentStep = await this.renderStep(newState);
           return {
@@ -163,7 +170,7 @@ export class BookingCoreService {
         }
         // Double check with DB
         const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(newState.fecha_cita!);
+        const slots = await validator.getAvailableSlots(newState.fecha_cita);
         const isAvailable = slots.some(
           (sl) => sl.hora === value && sl.available,
         );
@@ -206,9 +213,40 @@ export class BookingCoreService {
         }
     }
 
-    await this.updateSession(session.session_id!, newState);
+    if (!session.session_id) {
+      throw new Error("Session ID missing");
+    }
+    await this.updateSession(session.session_id, newState);
     const step = await this.renderStep(newState);
     return { step, newState };
+  }
+
+  private renderDateStep(): BookingStep {
+    const today = getVenezuelaNow();
+    const todayISO = formatDateISO(today);
+    const options = [];
+    let count = 0;
+    for (let i = 0; i <= 14 && count < 6; i++) {
+      const d = new Date(today.getTime() + i * 86400000);
+      const dayOfWeek = new Date(
+        d.toLocaleString("en-US", { timeZone: "America/Caracas" }),
+      ).getDay();
+
+      if ([1, 2, 3, 4, 5].includes(dayOfWeek)) {
+        const iso = formatDateISO(d);
+        const friendly = formatDateFriendly(d);
+        options.push({
+          label: iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
+          value: iso,
+        });
+        count++;
+      }
+    }
+    return {
+      status: "PROMPT",
+      message: "📅 <b>Selecciona una fecha:</b>",
+      options,
+    };
   }
 
   async renderStep(s: EphemeralState): Promise<BookingStep> {
@@ -257,37 +295,17 @@ export class BookingCoreService {
             "Contamos con servicios especializados para cada necesidad de tu vehículo.",
           options: SERVICE_OPTIONS.map((s) => ({ label: s, value: s })),
         };
-      case 6: {
-        const today = getVenezuelaNow();
-        const todayISO = formatDateISO(today);
-        const options = [];
-        let count = 0;
-        for (let i = 0; i <= 14 && count < 6; i++) {
-          const d = new Date(today.getTime() + i * 86400000);
-          const dayOfWeek = new Date(
-            d.toLocaleString("en-US", { timeZone: "America/Caracas" }),
-          ).getDay();
-
-          if ([1, 2, 3, 4, 5].includes(dayOfWeek)) {
-            const iso = formatDateISO(d);
-            const friendly = formatDateFriendly(d);
-            options.push({
-              label:
-                iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
-              value: iso,
-            });
-            count++;
-          }
-        }
-        return {
-          status: "PROMPT",
-          message: "📅 <b>Selecciona una fecha:</b>",
-          options,
-        };
-      }
+      case 6:
+        return this.renderDateStep();
       case 7: {
+        if (!s.fecha_cita) {
+          return {
+            status: "PROMPT",
+            message: "⚠️ Por favor, selecciona una fecha primero.",
+          };
+        }
         const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(s.fecha_cita!);
+        const slots = await validator.getAvailableSlots(s.fecha_cita);
         const available = slots.filter((sl) => sl.available);
         if (available.length === 0) {
           return {

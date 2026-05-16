@@ -4,29 +4,53 @@ on:
   pull_request:
     branches: [main, titan]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   check:
+    name: 🔬 CI Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
       - name: Install dependencies
-        run: npm ci
-      - name: Lint
-        run: npm run lint:strict
-      - name: Type Check
-        run: npm run check-types
-      - name: Test
-        run: npm run test
-      - name: Any Scanner
+        run: npm ci --ignore-scripts
+      - name: 🧹 Check for merge conflict markers
         run: |
-          ANY_COUNT=$(npm run any-scanner)
-          echo "Any count: $ANY_COUNT"
-          if [ "$ANY_COUNT" -gt 0 ]; then
-            echo "Error: 'any' type or cast detected in production code."
+          set -euo pipefail
+          if git grep -E "^<<<<<<<|^=======|^>>>>>>>" -- . ':(exclude)node_modules'; then
+            echo "❌ Merge conflict markers found in source code!"
             exit 1
           fi
+      - name: 🔍 Any Scanner
+        run: |
+          set -euo pipefail
+          ANY_COUNT=$(npm run any-scanner --silent | tail -n 1)
+          echo "Any count: $ANY_COUNT"
+          if [ "$ANY_COUNT" -gt 0 ]; then
+            echo "❌ ERROR: Detected $ANY_COUNT 'any' usages. Zero tolerance."
+            exit 1
+          fi
+      - name: 📝 Lint
+        run: |
+          set -euo pipefail
+          npm run lint:strict
+      - name: 📐 Type Check
+        run: npm run check-types
+      - name: 🧪 Tests
+        run: npm run test
+      - name: 🔐 Security Audit
+        run: |
+          set -euo pipefail
+          npm audit --audit-level=high
