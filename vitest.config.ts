@@ -8,7 +8,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       thresholds: {
-        lines: 50,
+        lines: 55,
       },
       exclude: ["node_modules/", "tests/"],
     },

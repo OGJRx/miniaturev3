@@ -31,12 +31,13 @@ export function setupBotMiddleware<C extends BorgContext<CoreEnv>>(
   bot.use(async (ctx: C, next: () => Promise<void>) => {
     const update = ctx.update;
     if (isInjectedUpdate(update)) {
-      const flavor: Partial<BorgContextFlavor<CoreEnv>> = {
+      if (!update.env || !update.executionContext) return;
+      const flavor: BorgContextFlavor<CoreEnv> = {
         env: update.env,
         executionContext: update.executionContext,
       };
-      ctx.env = flavor.env!;
-      ctx.executionContext = flavor.executionContext!;
+      ctx.env = flavor.env;
+      ctx.executionContext = flavor.executionContext;
     }
 
     ctx.traceId = ctx.executionContext?.traceId || crypto.randomUUID();
@@ -115,5 +116,10 @@ export function parseBotInfo(info?: string): BotInfoPayload {
 }
 
 export function isUpdate(update: unknown): update is Update {
-  return typeof update === "object" && update !== null && "update_id" in update;
+  return (
+    typeof update === "object" &&
+    update !== null &&
+    "update_id" in update &&
+    typeof (update as Update).update_id === "number"
+  );
 }

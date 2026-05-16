@@ -27,7 +27,7 @@ export class BookingCoreService {
   ): Promise<EphemeralState> {
     const res = await this.db
       .prepare(
-        "SELECT session_id, platform_user_id, platform_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE platform_user_id = ? AND platform = ? AND bot_type = ? ORDER BY updated_at DESC LIMIT 1",
+        "SELECT session_id, platform_user_id, platform_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE platform_user_id = ? AND platform = ? AND bot_type = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY updated_at DESC LIMIT 1",
       )
       .bind(platformUserId, platform, botType)
       .first<EphemeralState>();
@@ -145,7 +145,12 @@ export class BookingCoreService {
         }
         newState.fecha_cita = value;
         newState.paso_actual = 7;
-        break;
+        // Optimization: return immediately with the already fetched slots
+        const step = await this.renderStep(newState, slots);
+        if (session.session_id) {
+          await this.updateSession(session.session_id, newState);
+        }
+        return { step, newState };
       }
       case "set_hora": {
         if (!newState.fecha_cita) {
@@ -169,12 +174,15 @@ export class BookingCoreService {
           };
         }
         // Double check with DB
-        const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(newState.fecha_cita);
-        const isAvailable = slots.some(
-          (sl) => sl.hora === value && sl.available,
-        );
-        if (!isAvailable) {
+        const occupied = await this.db
+          .prepare(
+            "SELECT 1 FROM tickets WHERE fecha_cita = ? AND hora_cita = ? AND estado != 'cancelado' " +
+              "UNION SELECT 1 FROM blocked_slots WHERE fecha = ? AND hora = ?",
+          )
+          .bind(newState.fecha_cita, value, newState.fecha_cita, value)
+          .first();
+
+        if (occupied) {
           const currentStep = await this.renderStep(newState);
           return {
             step: {
@@ -193,14 +201,28 @@ export class BookingCoreService {
       case "conf_booking":
         if (value === "yes") {
           const creator = new TicketCreator(this.db);
-          const res = await creator.createTicket(newState);
+          // Atomic check and create
+          const res = await creator.createTicketAtomic(newState);
+          if (!res.success) {
+            newState.paso_actual = 7; // Back to time selection
+            const currentStep = await this.renderStep(newState);
+            return {
+              step: {
+                ...currentStep,
+                message:
+                  `❌ Lo sentimos, el horario seleccionado ya no está disponible. Por favor elige otro.\n\n` +
+                  currentStep.message,
+              },
+              newState,
+            };
+          }
           newState.estado_flujo = "confirmado";
           // We return the ticket_id in a special field or just part of message
           return {
             step: {
               status: "CONFIRMED",
               message: "CONFIRMED", // Orchestrator handles final UI
-              options: [{ label: "ticket_id", value: res.ticket_id }],
+              options: [{ label: "ticket_id", value: res.ticket_id! }],
             },
             newState,
           };
@@ -249,7 +271,10 @@ export class BookingCoreService {
     };
   }
 
-  async renderStep(s: EphemeralState): Promise<BookingStep> {
+  async renderStep(
+    s: EphemeralState,
+    cachedSlots?: { hora: string; available: boolean }[],
+  ): Promise<BookingStep> {
     switch (s.paso_actual) {
       case 1:
         return {
@@ -304,8 +329,9 @@ export class BookingCoreService {
             message: "⚠️ Por favor, selecciona una fecha primero.",
           };
         }
-        const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(s.fecha_cita);
+        const slots =
+          cachedSlots ||
+          (await new SlotValidator(this.db).getAvailableSlots(s.fecha_cita));
         const available = slots.filter((sl) => sl.available);
         if (available.length === 0) {
           return {

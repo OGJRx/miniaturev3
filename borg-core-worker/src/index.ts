@@ -17,6 +17,7 @@ import {
 } from "../../shared/security";
 import { UiManager } from "../../shared/ui/ui-manager";
 import { ObdSessionService } from "../../shared/services/obd-session";
+import { MaintenanceService } from "../../shared/services/maintenance-service";
 import { AgentFactory } from "../../shared/services/agent-factory";
 import { AGENT_PROMPTS, MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
 import { BookingOrchestrator } from "./booking-orchestrator";
@@ -84,9 +85,10 @@ async function routeRequest(
   } else {
     const nonce = response.headers.get("X-Borg-Nonce");
     const scriptSrc = nonce ? `'nonce-${nonce}'` : "'self'";
+    const styleSrc = nonce ? `'nonce-${nonce}'` : "'self' 'unsafe-inline'";
     response.headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; style-src 'self' 'unsafe-inline'; font-src https://fonts.gstatic.com; script-src 'self' ${scriptSrc}; connect-src 'self'; frame-ancestors 'none'`,
+      `default-src 'self'; style-src 'self' ${styleSrc}; font-src https://fonts.gstatic.com; script-src 'self' ${scriptSrc}; connect-src 'self'; frame-ancestors 'none'`,
     );
     response.headers.delete("X-Borg-Nonce");
   }
@@ -101,7 +103,7 @@ const orchestrator = new BookingOrchestrator();
 function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
   if (frontendBot) return frontendBot;
   frontendBot = new Bot<FrontendContext>(env.FRONTEND_BOT_TOKEN, {
-    botInfo: parseBotInfo(env.FRONTEND_BOT_INFO),
+    botInfo: parseBotInfo(env.FRONTEND_BOT_INFO) as any,
   });
   setupBotMiddleware(frontendBot, "Telegate-Frontend");
   frontendBot.use(idempotencyMiddleware());
@@ -115,78 +117,101 @@ function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
 function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
   if (backendBot) return backendBot;
   backendBot = new Bot<FrontendContext>(env.BACKEND_BOT_TOKEN, {
-    botInfo: parseBotInfo(env.BACKEND_BOT_INFO),
+    botInfo: parseBotInfo(env.BACKEND_BOT_INFO) as any,
   });
   setupBotMiddleware(backendBot, "Telegate-Backend");
+  backendBot.use(idempotencyMiddleware());
 
   const ADMIN_PANEL_MESSAGE =
     "🔱 <b>Borg Admin Nexus</b>\n\nPanel de control del Taller Titanium...";
 
   backendBot.command("start", async (ctx) => {
-    const menu = await MenuFactory.buildAdminMainMenu(ctx.env.BORG_SECRET_KEY);
-    await ctx.reply(ADMIN_PANEL_MESSAGE, {
-      parse_mode: "HTML",
-      reply_markup: menu,
-    });
+    try {
+      const menu = await MenuFactory.buildAdminMainMenu(ctx.env.BORG_SECRET_KEY);
+      await ctx.reply(ADMIN_PANEL_MESSAGE, {
+        parse_mode: "HTML",
+        reply_markup: menu,
+      });
+    } catch (error) {
+      ctx.logger?.error(`Error in /start: ${error}`);
+      await ctx.reply("⚠️ Error al iniciar panel admin.");
+    }
   });
 
   backendBot.on("message:text", async (ctx) => {
-    if (ctx.message?.text === "📋 Panel Admin") {
-      return await ctx.reply(ADMIN_PANEL_MESSAGE, {
-        parse_mode: "HTML",
-        reply_markup: await MenuFactory.buildAdminMainMenu(
-          ctx.env.BORG_SECRET_KEY,
-        ),
-      });
+    try {
+      if (ctx.message?.text === "📋 Panel Admin") {
+        return await ctx.reply(ADMIN_PANEL_MESSAGE, {
+          parse_mode: "HTML",
+          reply_markup: await MenuFactory.buildAdminMainMenu(
+            ctx.env.BORG_SECRET_KEY,
+          ),
+        });
+      }
+      await handleBackendTextMessage(ctx);
+    } catch (error) {
+      ctx.logger?.error(`Error in message:text: ${error}`);
+      await ctx.reply("⚠️ Error al procesar mensaje.");
     }
-    await handleBackendTextMessage(ctx);
   });
 
   backendBot.on("callback_query:data", async (ctx) => {
-    const parsed = await parseCallback(
-      ctx.callbackQuery?.data || "",
-      ctx.env.BORG_SECRET_KEY,
-    );
-    if (!parsed?.valid) return ctx.answerCallbackQuery("⚠️ Invalido");
-    const secret = ctx.env.BORG_SECRET_KEY;
-    switch (parsed.action) {
-      case "adm_main":
-        await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
-          reply_markup: await MenuFactory.buildAdminMainMenu(secret),
-        });
-        break;
-      case "ia_obd":
-        await ObdSessionService.activate(ctx.env.DB, ctx.from!.id);
-        await ctx.reply("✅ Modo OBD-II Activo");
-        break;
-      case "motor_help":
-        await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
-        break;
+    try {
+      const parsed = await parseCallback(
+        ctx.callbackQuery?.data || "",
+        ctx.env.BORG_SECRET_KEY,
+      );
+      if (!parsed?.valid) return ctx.answerCallbackQuery("⚠️ Invalido");
+      const secret = ctx.env.BORG_SECRET_KEY;
+      switch (parsed.action) {
+        case "adm_main":
+          await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
+            reply_markup: await MenuFactory.buildAdminMainMenu(secret),
+          });
+          break;
+        case "ia_obd":
+          if (ctx.from) {
+            await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
+            await ctx.reply("✅ Modo OBD-II Activo");
+          }
+          break;
+        case "motor_help":
+          await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
+          break;
+      }
+      await ctx.answerCallbackQuery().catch(() => {});
+    } catch (error) {
+      ctx.logger?.error(`Error in callback_query: ${error}`);
+      await ctx.answerCallbackQuery("⚠️ Error interno").catch(() => {});
     }
-    await ctx.answerCallbackQuery().catch(() => {});
   });
 
   return backendBot;
 }
 
 async function handleBackendTextMessage(ctx: FrontendContext) {
-  const adminId = ctx.from?.id;
-  if (!adminId) return;
-  const text = ctx.message?.text || "";
-  const obdActive = await ObdSessionService.isActive(ctx.env.DB, adminId);
-  const agentName = obdActive ? "OBD_DIAGNOSTICO" : "CEREBRO";
-  const prompt = obdActive
-    ? AGENT_PROMPTS.OBD_DIAGNOSTICO
-    : AGENT_PROMPTS.CEREBRO_ADMINISTRATIVO;
+  try {
+    const adminId = ctx.from?.id;
+    if (!adminId) return;
+    const text = ctx.message?.text || "";
+    const obdActive = await ObdSessionService.isActive(ctx.env.DB, adminId);
+    const agentName = obdActive ? "OBD_DIAGNOSTICO" : "CEREBRO";
+    const prompt = obdActive
+      ? AGENT_PROMPTS.OBD_DIAGNOSTICO
+      : AGENT_PROMPTS.CEREBRO_ADMINISTRATIVO;
 
-  const response = await AgentFactory.runAgent(
-    agentName,
-    prompt,
-    text,
-    [],
-    ctx.env,
-  );
-  if (response.success) await UiManager.safeReply(ctx, response.text);
+    const response = await AgentFactory.runAgent(
+      agentName,
+      prompt,
+      text,
+      [],
+      ctx.env,
+    );
+    if (response.success) await UiManager.safeReply(ctx, response.text);
+  } catch (error) {
+    ctx.logger?.error(`Error in handleBackendTextMessage: ${error instanceof Error ? error.message : String(error)}`, { stack: error instanceof Error ? error.stack : undefined });
+    await ctx.reply("⚠️ Error del sistema en el backend.").catch(() => {});
+  }
 }
 
 async function handleCalendarMiniApp(
@@ -266,7 +291,9 @@ export default {
     const db = env.DB;
     const now = getVETParts();
     if (now.minute % 10 === 0) await SeoService.processQueue(db, env);
-    if (now.hour % 6 === 0 && now.minute === 0)
+    if (now.hour % 6 === 0 && now.minute === 0) {
       await IaQueueService.processPendingJobs(db, ctx, env);
+      await MaintenanceService.runAudits(db, env);
+    }
   },
 };

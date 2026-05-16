@@ -7,6 +7,8 @@ import { BookingCoreService } from "../../shared/services/booking-core";
 import { WhatsAppApi } from "../../shared/whatsapp/whatsapp-api";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
 import { formatHourTo12, formatDateFriendly } from "../../shared/ui/formatters";
+import { BorgLogger } from "../../shared/services/borg-logger";
+import { getPlatformErrorFallback } from "../../shared/services/response-helper";
 
 export class WhatsAppBookingOrchestrator {
   private api: WhatsAppApi;
@@ -21,11 +23,12 @@ export class WhatsAppBookingOrchestrator {
   }
 
   async handleMessage(phoneNumber: string, text: string) {
-    const session = await this.core.getSession(
-      phoneNumber,
-      phoneNumber,
-      "whatsapp",
-    );
+    try {
+      const session = await this.core.getSession(
+        phoneNumber,
+        phoneNumber,
+        "whatsapp",
+      );
 
     const lowerText = text.toLowerCase().trim();
 
@@ -79,10 +82,15 @@ export class WhatsAppBookingOrchestrator {
       }
     }
 
-    await this.api.sendMessage(
-      phoneNumber,
-      "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.",
-    );
+      await this.api.sendMessage(
+        phoneNumber,
+        "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.",
+      );
+    } catch (error) {
+      const logger = new BorgLogger("WhatsAppBookingOrchestrator", this.env.DB, this.ctx.traceId, this.ctx);
+      logger.error(`Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`, { stack: error instanceof Error ? error.stack : undefined });
+      await this.api.sendMessage(phoneNumber, getPlatformErrorFallback("whatsapp")).catch(() => {});
+    }
   }
 
   private async handleSelection(

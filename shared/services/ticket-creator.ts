@@ -4,23 +4,35 @@ import { SERVICE_DURATIONS } from "../types/constants";
 
 export class TicketCreator {
   constructor(private db: D1Database) {}
-  async createTicket(
+
+  async createTicketAtomic(
     s: EphemeralState,
-  ): Promise<{ success: boolean; ticket_id: string }> {
-    if (!s.hora_cita || !s.servicio_solicitado) {
+  ): Promise<{ success: boolean; ticket_id?: string }> {
+    if (
+      !s.fecha_cita ||
+      !s.hora_cita ||
+      !s.servicio_solicitado ||
+      !s.session_id
+    ) {
       throw new Error("Missing required fields for ticket creation");
     }
+
     const ticket_id = `T-${Date.now()}`;
     const hora_fin = calculateEndTime(
       s.hora_cita,
       SERVICE_DURATIONS[s.servicio_solicitado] || 60,
     );
 
-    await this.db
+    const res = await this.db
       .prepare(
-        "INSERT INTO tickets (ticket_id, session_id, platform_user_id, platform_chat_id, platform, " +
-          "vehiculo_tipo, vehiculo_motor, vehiculo_era, servicio_solicitado, fecha_cita, hora_cita, hora_fin, kilometraje) " +
-          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        `INSERT INTO tickets (ticket_id, session_id, platform_user_id, platform_chat_id, platform,
+        vehiculo_tipo, vehiculo_motor, vehiculo_era, servicio_solicitado, fecha_cita, hora_cita, hora_fin, kilometraje)
+        SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        WHERE NOT EXISTS (
+          SELECT 1 FROM tickets WHERE fecha_cita = ? AND hora_cita = ? AND estado != 'cancelado'
+          UNION
+          SELECT 1 FROM blocked_slots WHERE fecha = ? AND hora = ?
+        )`,
       )
       .bind(
         ticket_id,
@@ -36,10 +48,26 @@ export class TicketCreator {
         s.hora_cita,
         hora_fin,
         s.kilometraje,
+        s.fecha_cita,
+        s.hora_cita,
+        s.fecha_cita,
+        s.hora_cita,
       )
       .run();
 
+    if (res.meta.changes === 0) {
+      return { success: false };
+    }
+
     return { success: true, ticket_id };
+  }
+
+  async createTicket(
+    s: EphemeralState,
+  ): Promise<{ success: boolean; ticket_id: string }> {
+    const res = await this.createTicketAtomic(s);
+    if (!res.success) throw new Error("Slot already occupied");
+    return { success: true, ticket_id: res.ticket_id! };
   }
 }
 

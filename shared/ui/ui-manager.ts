@@ -1,3 +1,4 @@
+import { Other } from "grammy";
 import { UiContext } from "../types";
 import { smartSplitHtml } from "./html-utils";
 
@@ -5,7 +6,7 @@ export class UiManager {
   static async safeEditOrReply(
     ctx: UiContext,
     t: string,
-    o: Record<string, unknown> = {},
+    o: Other<any, any> = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -30,11 +31,11 @@ export class UiManager {
       const fragment = fragments[i];
       if (!fragment) continue;
 
-      const fragOptions: Record<string, unknown> = {
+      const fragOptions: any = {
         parse_mode: "HTML",
         ...o,
       };
-      if (i > 0) delete fragOptions["reply_markup"];
+      if (i > 0) delete fragOptions.reply_markup;
 
       const callbackQuery = ctx.callbackQuery;
 
@@ -68,7 +69,7 @@ export class UiManager {
   static async safeReply(
     ctx: UiContext,
     t: string,
-    o: Record<string, unknown> = {},
+    o: Other<any, any> = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -92,11 +93,11 @@ export class UiManager {
       const fragment = fragments[i];
       if (!fragment) continue;
 
-      const fragOptions: Record<string, unknown> = {
+      const fragOptions: any = {
         parse_mode: "HTML",
         ...o,
       };
-      if (i > 0) delete fragOptions["reply_markup"];
+      if (i > 0) delete fragOptions.reply_markup;
 
       try {
         await ctx.reply(fragment, fragOptions);

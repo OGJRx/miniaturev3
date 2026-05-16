@@ -51,7 +51,19 @@ The following secrets MUST be configured in the environment:
 ## 📈 PROGRESS & ROADMAP
 
 - [x] Audit complete (v9.7.0).
-- [ ] Baseline consolidation (Clean Birth).
-- [ ] WhatsApp Business API Integration.
-- [ ] Signed Cookie Authentication.
-- [ ] Modular Refactoring.
+- [x] Baseline consolidation (Clean Birth).
+- [x] WhatsApp Business API Integration.
+- [x] Signed Cookie Authentication.
+- [x] Modular Refactoring.
+- [ ] Execute migrations 0003 --remote.
+- [ ] Execute provision-secrets.sh.
+- [ ] wrangler deploy.
+- [ ] Verify WhatsApp webhook 401 resolution.
+
+## 🔒 FREE TIER BUDGET
+
+- **CPU time:** 10ms per request.
+- **D1 Storage:** 500MB (Free Tier limit).
+- **D1 Reads/Writes:** 5M reads/day, 100K writes/day.
+- **Subrequests:** 50 per request.
+- **Memory:** 128MB.

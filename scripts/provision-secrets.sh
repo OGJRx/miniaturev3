@@ -20,7 +20,7 @@ wrangler secret put TALLER_LONGITUD <<EOF
 EOF
 
 wrangler secret put TALLER_MAPS_URL <<EOF
-https://maps.app.goo.gl/TitaniumTallerCaracas
+https://www.google.com/maps/search/?api=1&query=10.48855974863415,-66.88157077878705&query_place_id=Autodiagnostico+JR
 EOF
 
 wrangler secret put WHATSAPP_PHONE_NUMBER_ID <<EOF

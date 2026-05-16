@@ -4,7 +4,7 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calendario Titanium</title>
-    <style>
+    <style nonce="__NONCE__">
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 1rem; }
         @media (min-width: 768px) { body { padding: 2rem; } }
         .max-w-4xl { max-width: 56rem; margin-left: auto; margin-right: auto; }
