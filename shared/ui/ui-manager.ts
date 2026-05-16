@@ -6,7 +6,7 @@ export class UiManager {
     ctx: UiContext,
     t: string,
     o: Record<string, unknown> = {},
-  ): Promise<unknown> {
+  ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
       if (ctx.logger) {
@@ -36,16 +36,11 @@ export class UiManager {
       };
       if (i > 0) delete fragOptions["reply_markup"];
 
-      const callbackQuery = (ctx as { callbackQuery?: { message?: unknown } })
-        .callbackQuery;
+      const callbackQuery = ctx.callbackQuery;
 
       if (i === 0 && callbackQuery?.message) {
         try {
-          await (
-            ctx as {
-              editMessageText: (t: string, o: unknown) => Promise<unknown>;
-            }
-          ).editMessageText(fragment, fragOptions);
+          await ctx.editMessageText(fragment, fragOptions);
           continue;
         } catch (e: unknown) {
           if (ctx.logger) {
@@ -58,9 +53,7 @@ export class UiManager {
       }
 
       try {
-        await (
-          ctx as { reply: (t: string, o: unknown) => Promise<unknown> }
-        ).reply(fragment, fragOptions);
+        await ctx.reply(fragment, fragOptions);
       } catch (e: unknown) {
         if (ctx.logger) {
           ctx.logger.error(
@@ -70,14 +63,13 @@ export class UiManager {
         }
       }
     }
-    return null;
   }
 
   static async safeReply(
     ctx: UiContext,
     t: string,
     o: Record<string, unknown> = {},
-  ): Promise<unknown> {
+  ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
       if (ctx.logger) {
@@ -107,9 +99,7 @@ export class UiManager {
       if (i > 0) delete fragOptions["reply_markup"];
 
       try {
-        await (
-          ctx as { reply: (t: string, o: unknown) => Promise<unknown> }
-        ).reply(fragment, fragOptions);
+        await ctx.reply(fragment, fragOptions);
       } catch (e: unknown) {
         if (ctx.logger) {
           ctx.logger.error(
@@ -119,6 +109,5 @@ export class UiManager {
         }
       }
     }
-    return null;
   }
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Context } from "grammy";
+import { Context, Other } from "grammy";
 import { D1Database } from "@cloudflare/workers-types";
 import { BorgLogger } from "../services/borg-logger";
 
@@ -17,7 +17,21 @@ export type BorgContextFlavor<T> = {
 
 export type BorgContext<T> = Context & BorgContextFlavor<T>;
 
-export type UiContext = Context & { logger?: BorgLogger };
+export interface MessageCapable {
+  reply(
+    text: string,
+    other?: Other<"sendMessage", "chat_id" | "text">,
+  ): Promise<unknown>;
+  editMessageText(
+    text: string,
+    other?: Other<"editMessageText", "chat_id" | "text" | "message_id">,
+  ): Promise<unknown>;
+  callbackQuery?: {
+    message?: unknown;
+  };
+}
+
+export type UiContext = Context & MessageCapable & { logger?: BorgLogger };
 
 export interface CoreEnv {
   TELEGRAM_ADMIN_IDS: string;

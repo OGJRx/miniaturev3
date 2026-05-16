@@ -148,7 +148,14 @@ export class BookingCoreService {
         break;
       }
       case "set_hora": {
-        const validation = validateAppointmentSlot(newState.fecha_cita!, value);
+        if (!newState.fecha_cita) {
+          newState.paso_actual = 6;
+          return {
+            step: await this.renderStep(newState),
+            newState,
+          };
+        }
+        const validation = validateAppointmentSlot(newState.fecha_cita, value);
         if (!validation.valid) {
           const currentStep = await this.renderStep(newState);
           return {
@@ -163,7 +170,7 @@ export class BookingCoreService {
         }
         // Double check with DB
         const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(newState.fecha_cita!);
+        const slots = await validator.getAvailableSlots(newState.fecha_cita);
         const isAvailable = slots.some(
           (sl) => sl.hora === value && sl.available,
         );
@@ -206,7 +213,10 @@ export class BookingCoreService {
         }
     }
 
-    await this.updateSession(session.session_id!, newState);
+    if (!session.session_id) {
+      throw new Error("Session ID missing");
+    }
+    await this.updateSession(session.session_id, newState);
     const step = await this.renderStep(newState);
     return { step, newState };
   }
@@ -286,8 +296,14 @@ export class BookingCoreService {
         };
       }
       case 7: {
+        if (!s.fecha_cita) {
+          return {
+            status: "PROMPT",
+            message: "⚠️ Por favor, selecciona una fecha primero.",
+          };
+        }
         const validator = new SlotValidator(this.db);
-        const slots = await validator.getAvailableSlots(s.fecha_cita!);
+        const slots = await validator.getAvailableSlots(s.fecha_cita);
         const available = slots.filter((sl) => sl.available);
         if (available.length === 0) {
           return {

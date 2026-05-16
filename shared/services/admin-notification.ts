@@ -53,13 +53,14 @@ export class AdminNotificationService {
     env: CoreEnv,
     session: EphemeralState,
     ticketId: string,
-    _platform: "telegram" | "whatsapp",
+    platform: "telegram" | "whatsapp",
   ): Promise<void> {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
     const notifBody =
       `🔔 <b>Nueva Cita Confirmada</b>\n\n` +
       `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
+      `📱 <b>Origen:</b> ${platform === "whatsapp" ? "WhatsApp" : "Telegram"}\n` +
       `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
       `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
       `📻 <b>Km:</b> ${session.kilometraje ?? "N/A"}\n` +

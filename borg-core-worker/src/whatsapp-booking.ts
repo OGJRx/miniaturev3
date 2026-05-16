@@ -137,10 +137,17 @@ export class WhatsAppBookingOrchestrator {
         (o) => o.label === "ticket_id",
       )?.value;
 
+      if (!ticketId) {
+        return await this.api.sendMessage(
+          phoneNumber,
+          "⚠️ Error al generar ticket. Contacte soporte.",
+        );
+      }
+
       const notifPromise = AdminNotificationService.dispatch(
         this.env,
         session,
-        ticketId!,
+        ticketId,
         "whatsapp",
       );
       this.ctx.waitUntil(notifPromise);
