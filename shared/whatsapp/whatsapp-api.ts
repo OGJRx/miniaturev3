@@ -69,7 +69,7 @@ export class WhatsAppApi {
       }),
     });
 
-    const data: any = await response.json();
+    const data = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
       this.logger?.error(
         "whatsapp_api",

@@ -103,7 +103,7 @@ const orchestrator = new BookingOrchestrator();
 function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
   if (frontendBot) return frontendBot;
   frontendBot = new Bot<FrontendContext>(env.FRONTEND_BOT_TOKEN, {
-    botInfo: parseBotInfo(env.FRONTEND_BOT_INFO) as any,
+    botInfo: parseBotInfo(env.FRONTEND_BOT_INFO),
   });
   setupBotMiddleware(frontendBot, "Telegate-Frontend");
   frontendBot.use(idempotencyMiddleware());
@@ -117,7 +117,7 @@ function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
 function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
   if (backendBot) return backendBot;
   backendBot = new Bot<FrontendContext>(env.BACKEND_BOT_TOKEN, {
-    botInfo: parseBotInfo(env.BACKEND_BOT_INFO) as any,
+    botInfo: parseBotInfo(env.BACKEND_BOT_INFO),
   });
   setupBotMiddleware(backendBot, "Telegate-Backend");
   backendBot.use(idempotencyMiddleware());

@@ -6,7 +6,7 @@ export class UiManager {
   static async safeEditOrReply(
     ctx: UiContext,
     t: string,
-    o: Other<any, any> = {},
+    o: Record<string, unknown> = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -31,7 +31,7 @@ export class UiManager {
       const fragment = fragments[i];
       if (!fragment) continue;
 
-      const fragOptions: any = {
+      const fragOptions: Record<string, unknown> = {
         parse_mode: "HTML",
         ...o,
       };
@@ -69,7 +69,7 @@ export class UiManager {
   static async safeReply(
     ctx: UiContext,
     t: string,
-    o: Other<any, any> = {},
+    o: Record<string, unknown> = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -93,7 +93,7 @@ export class UiManager {
       const fragment = fragments[i];
       if (!fragment) continue;
 
-      const fragOptions: any = {
+      const fragOptions: Record<string, unknown> = {
         parse_mode: "HTML",
         ...o,
       };
