@@ -11,13 +11,13 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 
   // In production (Cloudflare Workers), timingSafeEqual is available.
   // In test environments (Vitest/Node), it might not be.
-  const subtle = crypto.subtle as any;
+  const subtle = crypto.subtle as unknown as Record<string, unknown>;
   if (
     subtle &&
     "timingSafeEqual" in subtle &&
-    typeof subtle.timingSafeEqual === "function"
+    typeof subtle["timingSafeEqual"] === "function"
   ) {
-    return subtle.timingSafeEqual(aHash, bHash);
+    return (subtle["timingSafeEqual"] as Function)(aHash, bHash);
   }
 
   // Fallback for environments where timingSafeEqual is not available (like Vitest)
