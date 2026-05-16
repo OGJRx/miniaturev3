@@ -112,6 +112,7 @@ export const BotInfoPayloadSchema = z.object({
   is_bot: z.literal(true),
   can_join_groups: z.boolean().default(false),
   can_read_all_group_messages: z.boolean().default(false),
+  can_manage_bots: z.boolean().default(false),
   supports_inline_queries: z.boolean().default(false),
   can_connect_to_business: z.boolean().default(false),
   has_main_web_app: z.boolean().default(false),
