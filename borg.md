@@ -39,6 +39,14 @@ The following secrets MUST be configured in the environment:
    - Verify Token: Matches `WHATSAPP_VERIFY_TOKEN`.
    - Subscribe to: `messages`, `messaging_postbacks`, `message.statuses`.
 3. **D1 Migration:** Run `wrangler d1 migrations apply borgptron-db --remote` after the baseline is set.
+4. **Filesystem Cleanup:** Delete duplicate repositories at `/home/z/my-project/` (`miniaturev3` and `miniature-borg_core-journey`). Only `miniaturev3-audit` should remain.
+5. **Secret Provisioning:** Run `wrangler secret put <NAME>` for:
+   - `FRONTEND_BOT_INFO`
+   - `BACKEND_BOT_INFO`
+   - `TALLER_LATITUD`
+   - `TALLER_LONGITUD`
+   - `TALLER_MAPS_URL`
+   - `WHATSAPP_PHONE_NUMBER_ID`
 
 ## 📈 PROGRESS & ROADMAP
 

@@ -35,6 +35,7 @@ export class BookingCoreService {
     if (res) return res;
 
     const sessionId = `S-${Date.now()}-${platformUserId.slice(-4)}`;
+    const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
     const newState: EphemeralState = {
       session_id: sessionId,
       platform_user_id: platformUserId,
@@ -48,7 +49,7 @@ export class BookingCoreService {
 
     await this.db
       .prepare(
-        "INSERT INTO sessions (session_id, platform_user_id, platform_chat_id, platform, bot_type, estado_flujo, paso_actual) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions (session_id, platform_user_id, platform_chat_id, platform, bot_type, estado_flujo, paso_actual, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
         sessionId,
@@ -58,6 +59,7 @@ export class BookingCoreService {
         botType,
         "iniciado",
         0,
+        expiresAt,
       )
       .run();
 

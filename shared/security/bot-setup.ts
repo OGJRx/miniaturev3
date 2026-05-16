@@ -4,6 +4,8 @@ import {
   BorgContext,
   BorgContextFlavor,
   BorgExecutionContext,
+  BotInfoPayload,
+  BotInfoPayloadSchema,
 } from "../types";
 import { BorgLogger } from "../services/borg-logger";
 import { Update } from "@grammyjs/types";
@@ -84,15 +86,14 @@ export function idempotencyMiddleware() {
   };
 }
 
-export function parseBotInfo(info?: string): unknown {
-  const defaults = {
+export function parseBotInfo(info?: string): BotInfoPayload {
+  const defaults: BotInfoPayload = {
     id: 1,
     first_name: "Borg",
     username: "borg_bot",
-    is_bot: true as const,
+    is_bot: true,
     can_join_groups: false,
     can_read_all_group_messages: false,
-    can_manage_bots: false,
     supports_inline_queries: false,
     can_connect_to_business: false,
     has_main_web_app: false,
@@ -102,7 +103,9 @@ export function parseBotInfo(info?: string): unknown {
 
   if (info) {
     try {
-      return { ...defaults, ...JSON.parse(info) };
+      const parsed = JSON.parse(info);
+      const result = BotInfoPayloadSchema.safeParse({ ...defaults, ...parsed });
+      if (result.success) return result.data;
     } catch (_e) {
       /* ignore */
     }

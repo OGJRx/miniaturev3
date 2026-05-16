@@ -14,17 +14,7 @@ compatibility_flags = ["nodejs_compat"]
 AI_MODEL_NAME = "gemini-2.5-flash-lite"
 BORG_VERSION = "9.7.0-TITANIUM"
 
-# Información pre-cacheada de los bots (opcional)
-FRONTEND_BOT_INFO = '{"id":7806101848,"is_bot":true,"first_name":"Borg Telegate","username":"borg_frontend_bot"}'
-BACKEND_BOT_INFO = '{"id":6617778072,"is_bot":true,"first_name":"Borg Backend","username":"borg_backend_bot"}'
-
-# UBICACIÓN DEL LOCAL (Precisión Milimétrica)
-TALLER_LATITUD = "10.48855974863415"
-TALLER_LONGITUD = "-66.88157077878705"
-TALLER_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=10.48855974863415,-66.88157077878705&query_place_id=Autodiagnostico+JR"
-
 # WhatsApp Config
-WHATSAPP_PHONE_NUMBER_ID = "1092822373921606"
 WHATSAPP_API_VERSION = "v25.0"
 
 
