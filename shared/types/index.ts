@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Context, Other } from "grammy";
+import { Context } from "grammy";
 import { D1Database } from "@cloudflare/workers-types";
 import { BorgLogger } from "../services/borg-logger";
 
@@ -20,15 +20,17 @@ export type BorgContext<T> = Context & BorgContextFlavor<T>;
 export interface MessageCapable {
   reply(
     text: string,
-    other?: Other<"sendMessage", "chat_id" | "text">,
+    other?: Record<string, unknown> | undefined,
   ): Promise<unknown>;
   editMessageText(
     text: string,
-    other?: Other<"editMessageText", "chat_id" | "text" | "message_id">,
+    other?: Record<string, unknown> | undefined,
   ): Promise<unknown>;
-  callbackQuery?: {
-    message?: unknown;
-  };
+  callbackQuery?:
+    | {
+        message?: unknown | undefined;
+      }
+    | undefined;
 }
 
 export type UiContext = Context & MessageCapable & { logger?: BorgLogger };

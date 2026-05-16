@@ -221,6 +221,34 @@ export class BookingCoreService {
     return { step, newState };
   }
 
+  private renderDateStep(): BookingStep {
+    const today = getVenezuelaNow();
+    const todayISO = formatDateISO(today);
+    const options = [];
+    let count = 0;
+    for (let i = 0; i <= 14 && count < 6; i++) {
+      const d = new Date(today.getTime() + i * 86400000);
+      const dayOfWeek = new Date(
+        d.toLocaleString("en-US", { timeZone: "America/Caracas" }),
+      ).getDay();
+
+      if ([1, 2, 3, 4, 5].includes(dayOfWeek)) {
+        const iso = formatDateISO(d);
+        const friendly = formatDateFriendly(d);
+        options.push({
+          label: iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
+          value: iso,
+        });
+        count++;
+      }
+    }
+    return {
+      status: "PROMPT",
+      message: "📅 <b>Selecciona una fecha:</b>",
+      options,
+    };
+  }
+
   async renderStep(s: EphemeralState): Promise<BookingStep> {
     switch (s.paso_actual) {
       case 1:
@@ -267,34 +295,8 @@ export class BookingCoreService {
             "Contamos con servicios especializados para cada necesidad de tu vehículo.",
           options: SERVICE_OPTIONS.map((s) => ({ label: s, value: s })),
         };
-      case 6: {
-        const today = getVenezuelaNow();
-        const todayISO = formatDateISO(today);
-        const options = [];
-        let count = 0;
-        for (let i = 0; i <= 14 && count < 6; i++) {
-          const d = new Date(today.getTime() + i * 86400000);
-          const dayOfWeek = new Date(
-            d.toLocaleString("en-US", { timeZone: "America/Caracas" }),
-          ).getDay();
-
-          if ([1, 2, 3, 4, 5].includes(dayOfWeek)) {
-            const iso = formatDateISO(d);
-            const friendly = formatDateFriendly(d);
-            options.push({
-              label:
-                iso === todayISO ? `🔥 ${friendly} (Hoy)` : `📅 ${friendly}`,
-              value: iso,
-            });
-            count++;
-          }
-        }
-        return {
-          status: "PROMPT",
-          message: "📅 <b>Selecciona una fecha:</b>",
-          options,
-        };
-      }
+      case 6:
+        return this.renderDateStep();
       case 7: {
         if (!s.fecha_cita) {
           return {
