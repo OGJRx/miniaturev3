@@ -129,7 +129,7 @@ export const adminAuthGuard: BorgMiddleware = async (request, env, _ctx) => {
       }
     }
   } catch (_e: unknown) {
-    /* ignore */
+    return new Response("Bad Request", { status: 400 });
   }
   return null;
 };

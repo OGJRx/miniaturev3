@@ -104,3 +104,19 @@ export interface AiConversationItem {
   role: "user" | "model";
   parts: { text: string }[];
 }
+
+export const BotInfoPayloadSchema = z.object({
+  id: z.number(),
+  first_name: z.string(),
+  username: z.string(),
+  is_bot: z.literal(true),
+  can_join_groups: z.boolean().default(false),
+  can_read_all_group_messages: z.boolean().default(false),
+  can_manage_bots: z.boolean().default(false),
+  supports_inline_queries: z.boolean().default(false),
+  can_connect_to_business: z.boolean().default(false),
+  has_main_web_app: z.boolean().default(false),
+  has_topics_enabled: z.boolean().default(false),
+  allows_users_to_create_topics: z.boolean().default(false),
+});
+export type BotInfoPayload = z.infer<typeof BotInfoPayloadSchema>;
