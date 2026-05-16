@@ -22,7 +22,9 @@ describe("BookingCoreService", () => {
     await service.getSession("user1", "chat1", "telegram");
 
     expect(dbMock.prepare).toHaveBeenCalledWith(
-      expect.stringContaining("AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)")
+      expect.stringContaining(
+        "AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)",
+      ),
     );
   });
 
@@ -32,12 +34,12 @@ describe("BookingCoreService", () => {
 
     expect(session.platform_user_id).toBe("user1");
     expect(dbMock.prepare).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO sessions")
+      expect.stringContaining("INSERT INTO sessions"),
     );
   });
 
   it("handleAction set_fecha should use cached slots if provided", async () => {
-     // This is more of an internal optimization test.
-     // In the code, set_fecha calls renderStep(newState, slots)
+    // This is more of an internal optimization test.
+    // In the code, set_fecha calls renderStep(newState, slots)
   });
 });

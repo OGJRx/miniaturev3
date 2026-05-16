@@ -1,4 +1,3 @@
-import { Other } from "grammy";
 import { UiContext } from "../types";
 import { smartSplitHtml } from "./html-utils";
 

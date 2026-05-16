@@ -127,7 +127,9 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
 
   backendBot.command("start", async (ctx) => {
     try {
-      const menu = await MenuFactory.buildAdminMainMenu(ctx.env.BORG_SECRET_KEY);
+      const menu = await MenuFactory.buildAdminMainMenu(
+        ctx.env.BORG_SECRET_KEY,
+      );
       await ctx.reply(ADMIN_PANEL_MESSAGE, {
         parse_mode: "HTML",
         reply_markup: menu,
@@ -209,7 +211,10 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
     );
     if (response.success) await UiManager.safeReply(ctx, response.text);
   } catch (error) {
-    ctx.logger?.error(`Error in handleBackendTextMessage: ${error instanceof Error ? error.message : String(error)}`, { stack: error instanceof Error ? error.stack : undefined });
+    ctx.logger?.error(
+      `Error in handleBackendTextMessage: ${error instanceof Error ? error.message : String(error)}`,
+      { stack: error instanceof Error ? error.stack : undefined },
+    );
     await ctx.reply("⚠️ Error del sistema en el backend.").catch(() => {});
   }
 }

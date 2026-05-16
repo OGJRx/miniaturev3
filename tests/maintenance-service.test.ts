@@ -20,11 +20,20 @@ describe("MaintenanceService", () => {
   });
 
   it("runAudits should execute all cleanup queries", async () => {
-    await MaintenanceService.runAudits(dbMock as unknown as D1Database, envMock as CoreEnv);
+    await MaintenanceService.runAudits(
+      dbMock as unknown as D1Database,
+      envMock as CoreEnv,
+    );
 
     // Check if at least some of the expected tables are being cleaned
-    expect(dbMock.prepare).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM system_logs"));
-    expect(dbMock.prepare).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM processed_updates"));
-    expect(dbMock.prepare).toHaveBeenCalledWith(expect.stringContaining("DELETE FROM whatsapp_messages"));
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM system_logs"),
+    );
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM processed_updates"),
+    );
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM whatsapp_messages"),
+    );
   });
 });

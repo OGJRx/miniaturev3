@@ -43,9 +43,21 @@ export class BookingOrchestrator {
         return await this.handleText(ctx, session);
       }
     } catch (error) {
-      const logger = ctx.logger || new BorgLogger("BookingOrchestrator", ctx.env.DB, ctx.traceId, ctx.executionContext);
-      logger.error(`Error in handleUpdate: ${error instanceof Error ? error.message : String(error)}`, { stack: error instanceof Error ? error.stack : undefined });
-      await ctx.reply(getPlatformErrorFallback("telegram"), { parse_mode: "HTML" }).catch(() => {});
+      const logger =
+        ctx.logger ||
+        new BorgLogger(
+          "BookingOrchestrator",
+          ctx.env.DB,
+          ctx.traceId,
+          ctx.executionContext,
+        );
+      logger.error(
+        `Error in handleUpdate: ${error instanceof Error ? error.message : String(error)}`,
+        { stack: error instanceof Error ? error.stack : undefined },
+      );
+      await ctx
+        .reply(getPlatformErrorFallback("telegram"), { parse_mode: "HTML" })
+        .catch(() => {});
     }
   }
 
@@ -190,7 +202,9 @@ export class BookingOrchestrator {
 
     const summaryPromise = UiManager.safeEditOrReply(ctx, summary, {
       parse_mode: "HTML",
-      ...(keyboard.inline_keyboard.length > 0 ? { reply_markup: keyboard } : {}),
+      ...(keyboard.inline_keyboard.length > 0
+        ? { reply_markup: keyboard }
+        : {}),
     });
     ctx.executionContext.waitUntil(summaryPromise);
 
