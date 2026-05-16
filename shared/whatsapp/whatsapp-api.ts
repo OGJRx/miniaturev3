@@ -32,7 +32,14 @@ export class WhatsAppApi {
             "window_end = CASE WHEN window_end < ? THEN ? ELSE window_end END " +
             "RETURNING request_count, window_end",
         )
-        .bind(to, windowStart, windowStart, windowStart, windowStart, windowStart)
+        .bind(
+          to,
+          windowStart,
+          windowStart,
+          windowStart,
+          windowStart,
+          windowStart,
+        )
         .first<{ request_count: number }>();
 
       if (res && res.request_count > 3) return false;

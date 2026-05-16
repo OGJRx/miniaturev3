@@ -51,6 +51,7 @@ export default tseslint.config(
       "borg-frontend-tele-app/**",
       "eslint.config.js",
       "scripts/**",
+      "coverage/**",
     ],
   },
 );

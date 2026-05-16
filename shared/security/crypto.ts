@@ -17,7 +17,11 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
     "timingSafeEqual" in subtle &&
     typeof subtle["timingSafeEqual"] === "function"
   ) {
-    return (subtle["timingSafeEqual"] as Function)(aHash, bHash);
+    const fn = subtle["timingSafeEqual"] as (
+      a: ArrayBuffer,
+      b: ArrayBuffer,
+    ) => boolean;
+    return fn(aHash, bHash);
   }
 
   // Fallback for environments where timingSafeEqual is not available (like Vitest)

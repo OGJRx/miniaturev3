@@ -41,14 +41,18 @@ describe("BookingCoreService", () => {
   it("handleAction set_fecha should use cached slots if provided", async () => {
     const session = await service.getSession("user1", "chat1", "telegram");
     session.paso_actual = 5;
-    const slots = [{ hora: "08:00", available: true }];
-    const result = await service.handleAction(session, "set_fecha", "2099-10-12");
+    const _slots = [{ hora: "08:00", available: true }];
+    const result = await service.handleAction(
+      session,
+      "set_fecha",
+      "2099-10-12",
+    );
     expect(result.step.options).toBeDefined();
     expect(result.newState.fecha_cita).toBe("2099-10-12");
   });
 
   it("handleAction conf_booking should throw error if ticket_id is missing", async () => {
-    const session = {
+    const _session = {
       session_id: "S123",
       paso_actual: 8,
       platform_user_id: "U123",
