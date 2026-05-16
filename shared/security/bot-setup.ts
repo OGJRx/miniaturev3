@@ -2,7 +2,6 @@ import { Api, Context, Bot } from "grammy";
 import {
   CoreEnv,
   BorgContext,
-  BorgContextFlavor,
   BorgExecutionContext,
   BotInfoPayload,
   BotInfoPayloadSchema,
@@ -32,12 +31,8 @@ export function setupBotMiddleware<C extends BorgContext<CoreEnv>>(
     const update = ctx.update;
     if (isInjectedUpdate(update)) {
       if (!update.env || !update.executionContext) return;
-      const flavor: BorgContextFlavor<CoreEnv> = {
-        env: update.env,
-        executionContext: update.executionContext,
-      };
-      ctx.env = flavor.env;
-      ctx.executionContext = flavor.executionContext;
+      ctx.env = update.env;
+      ctx.executionContext = update.executionContext;
     }
 
     ctx.traceId = ctx.executionContext?.traceId || crypto.randomUUID();

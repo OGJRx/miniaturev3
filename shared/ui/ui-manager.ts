@@ -34,7 +34,7 @@ export class UiManager {
         parse_mode: "HTML",
         ...o,
       };
-      if (i > 0) delete fragOptions.reply_markup;
+      if (i > 0) delete fragOptions["reply_markup"];
 
       const callbackQuery = ctx.callbackQuery;
 
@@ -96,7 +96,7 @@ export class UiManager {
         parse_mode: "HTML",
         ...o,
       };
-      if (i > 0) delete fragOptions.reply_markup;
+      if (i > 0) delete fragOptions["reply_markup"];
 
       try {
         await ctx.reply(fragment, fragOptions);

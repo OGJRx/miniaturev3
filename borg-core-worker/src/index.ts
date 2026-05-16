@@ -129,13 +129,14 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
     try {
       const menu = await MenuFactory.buildAdminMainMenu(
         ctx.env.BORG_SECRET_KEY,
+        ctx.env,
       );
       await ctx.reply(ADMIN_PANEL_MESSAGE, {
         parse_mode: "HTML",
         reply_markup: menu,
       });
     } catch (error) {
-      ctx.logger?.error(`Error in /start: ${error}`);
+      ctx.logger?.error("start_command", `Error in /start: ${error}`);
       await ctx.reply("⚠️ Error al iniciar panel admin.");
     }
   });
@@ -147,12 +148,13 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
           parse_mode: "HTML",
           reply_markup: await MenuFactory.buildAdminMainMenu(
             ctx.env.BORG_SECRET_KEY,
+            ctx.env,
           ),
         });
       }
       await handleBackendTextMessage(ctx);
     } catch (error) {
-      ctx.logger?.error(`Error in message:text: ${error}`);
+      ctx.logger?.error("message_text", `Error in message:text: ${error}`);
       await ctx.reply("⚠️ Error al procesar mensaje.");
     }
   });
@@ -168,7 +170,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
       switch (parsed.action) {
         case "adm_main":
           await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
-            reply_markup: await MenuFactory.buildAdminMainMenu(secret),
+            reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
           });
           break;
         case "ia_obd":
@@ -183,7 +185,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
       }
       await ctx.answerCallbackQuery().catch(() => {});
     } catch (error) {
-      ctx.logger?.error(`Error in callback_query: ${error}`);
+      ctx.logger?.error("callback_query", `Error in callback_query: ${error}`);
       await ctx.answerCallbackQuery("⚠️ Error interno").catch(() => {});
     }
   });
@@ -212,8 +214,9 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
     if (response.success) await UiManager.safeReply(ctx, response.text);
   } catch (error) {
     ctx.logger?.error(
+      "handleBackendTextMessage",
       `Error in handleBackendTextMessage: ${error instanceof Error ? error.message : String(error)}`,
-      { stack: error instanceof Error ? error.stack : undefined },
+      error instanceof Error ? error.stack : undefined,
     );
     await ctx.reply("⚠️ Error del sistema en el backend.").catch(() => {});
   }

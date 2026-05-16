@@ -52,8 +52,9 @@ export class BookingOrchestrator {
           ctx.executionContext,
         );
       logger.error(
+        "handleUpdate",
         `Error in handleUpdate: ${error instanceof Error ? error.message : String(error)}`,
-        { stack: error instanceof Error ? error.stack : undefined },
+        error instanceof Error ? error.stack : undefined,
       );
       await ctx
         .reply(getPlatformErrorFallback("telegram"), { parse_mode: "HTML" })

@@ -1,4 +1,4 @@
-import { CoreEnv } from "../types";
+import { CoreEnv, CircuitService } from "../types";
 import { BorgLogger } from "../services/borg-logger";
 import { TitaniumCircuitBreaker } from "../services/circuit-breaker";
 
@@ -44,7 +44,12 @@ export class WhatsAppApi {
   }
 
   async sendMessage(to: string, text: string): Promise<unknown> {
-    if (await TitaniumCircuitBreaker.shouldBlock(this.env, "WHATSAPP")) {
+    if (
+      await TitaniumCircuitBreaker.shouldBlock(
+        this.env,
+        CircuitService.WHATSAPP,
+      )
+    ) {
       throw new Error("WhatsApp circuit breaker is open");
     }
 
@@ -77,11 +82,14 @@ export class WhatsAppApi {
       );
       await TitaniumCircuitBreaker.recordFailure(
         this.env,
-        "WHATSAPP",
+        CircuitService.WHATSAPP,
         response.status,
       );
     } else {
-      await TitaniumCircuitBreaker.recordSuccess(this.env, "WHATSAPP");
+      await TitaniumCircuitBreaker.recordSuccess(
+        this.env,
+        CircuitService.WHATSAPP,
+      );
     }
     return data;
   }

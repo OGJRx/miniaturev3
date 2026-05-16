@@ -1,8 +1,9 @@
 import { InlineKeyboard } from "grammy";
 import { buildCallback } from "../security";
+import { CoreEnv } from "../types";
 
 export class MenuFactory {
-  static async buildAdminMainMenu(secret: string): Promise<InlineKeyboard> {
+  static async buildAdminMainMenu(secret: string, _env: CoreEnv) {
     return new InlineKeyboard()
       .text("🤖 IA Features", await buildCallback("adm_ia", "0", secret))
       .row()

@@ -33,6 +33,8 @@ export interface MessageCapable {
     | undefined;
 }
 
+export type Platform = "telegram" | "whatsapp";
+
 export type UiContext = Context & MessageCapable & { logger?: BorgLogger };
 
 export interface CoreEnv {
@@ -54,6 +56,9 @@ export interface CoreEnv {
   WHATSAPP_VERIFY_TOKEN: string;
   WHATSAPP_PHONE_NUMBER_ID: string;
   WHATSAPP_API_VERSION: string;
+  RETENTION_LOGS_DAYS?: string;
+  RETENTION_UPDATES_HOURS?: string;
+  RETENTION_WHATSAPP_DAYS?: string;
 }
 
 export interface UbicacionTaller {
@@ -114,6 +119,7 @@ export enum CircuitService {
   GEMINI = "gemini",
   TELEGRAM_API = "telegram_api",
   QUEUE_SATURATION = "queue_saturation",
+  WHATSAPP = "whatsapp",
 }
 
 export interface AiConversationItem {

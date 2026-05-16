@@ -94,8 +94,9 @@ export class WhatsAppBookingOrchestrator {
         this.ctx,
       );
       logger.error(
+        "handleMessage",
         `Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`,
-        { stack: error instanceof Error ? error.stack : undefined },
+        error instanceof Error ? error.stack : undefined,
       );
       await this.api
         .sendMessage(phoneNumber, getPlatformErrorFallback("whatsapp"))
