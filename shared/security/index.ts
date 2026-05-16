@@ -165,22 +165,30 @@ export async function parseCallback(
   const parts = data.split("#");
   const base = parts[0];
   const sig = parts[1];
-  const bParts = base!.split(":");
+  if (!base || !sig) return null;
+
+  const bParts = base.split(":");
   const ts36 = bParts.pop();
+  if (!ts36) return null;
+
   const short = bParts[0];
+  if (!short) return null;
+
   const value = bParts.slice(1).join(":");
-  let action = short!;
+  let action = short;
   Object.entries(ActionMap).forEach(([k, v]) => {
     if (v === short) action = k;
   });
-  const expected = (await hmacSha256(secret, base!)).substring(0, 16);
-  if (!sig || !(await timingSafeEqual(sig, expected)))
+
+  const expected = (await hmacSha256(secret, base)).substring(0, 16);
+  if (!(await timingSafeEqual(sig, expected)))
     return { action, value, expired: false, valid: false };
+
   return {
     action,
     value,
     expired:
-      Math.floor((Date.now() / 1000 - BORG_EPOCH) / 60) - parseInt(ts36!, 36) >
+      Math.floor((Date.now() / 1000 - BORG_EPOCH) / 60) - parseInt(ts36, 36) >
       1440,
     valid: true,
   };

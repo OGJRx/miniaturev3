@@ -2,7 +2,6 @@ import { Api, Context, Bot } from "grammy";
 import {
   CoreEnv,
   BorgContext,
-  BorgContextFlavor,
   BorgExecutionContext,
   BotInfoPayload,
   BotInfoPayloadSchema,
@@ -31,12 +30,9 @@ export function setupBotMiddleware<C extends BorgContext<CoreEnv>>(
   bot.use(async (ctx: C, next: () => Promise<void>) => {
     const update = ctx.update;
     if (isInjectedUpdate(update)) {
-      const flavor: Partial<BorgContextFlavor<CoreEnv>> = {
-        env: update.env,
-        executionContext: update.executionContext,
-      };
-      ctx.env = flavor.env!;
-      ctx.executionContext = flavor.executionContext!;
+      if (!update.env || !update.executionContext) return;
+      ctx.env = update.env;
+      ctx.executionContext = update.executionContext;
     }
 
     ctx.traceId = ctx.executionContext?.traceId || crypto.randomUUID();
@@ -115,5 +111,10 @@ export function parseBotInfo(info?: string): BotInfoPayload {
 }
 
 export function isUpdate(update: unknown): update is Update {
-  return typeof update === "object" && update !== null && "update_id" in update;
+  return (
+    typeof update === "object" &&
+    update !== null &&
+    "update_id" in update &&
+    typeof (update as Update).update_id === "number"
+  );
 }

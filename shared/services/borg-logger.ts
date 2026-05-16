@@ -19,18 +19,23 @@ export class BorgLogger {
     console.warn(`[${this.comp}] ${m}`);
     if (this.db) this.persistToDb("WARN", action, m);
   }
-  error(action: string, m: string) {
-    console.error(`[${this.comp}] ${m}`);
-    if (this.db) this.persistToDb("ERROR", action, m);
+  error(action: string, m: string, stack?: string) {
+    console.error(`[${this.comp}] ${m}${stack ? `\n${stack}` : ""}`);
+    if (this.db) this.persistToDb("ERROR", action, m, stack);
   }
   success(action: string, m: string) {
     console.log(`[${this.comp}] ${m}`);
     if (this.db) this.persistToDb("SUCCESS", action, m);
   }
 
-  private persistToDb(level: string, action: string, message: string) {
+  private persistToDb(
+    level: string,
+    action: string,
+    message: string,
+    stack?: string,
+  ) {
     if (!this.db) return;
-    const metadata = JSON.stringify({ action });
+    const metadata = JSON.stringify({ action, stack });
     const p = this.db
       .prepare(
         "INSERT INTO system_logs (component, log_level, message, metadata, trace_id) VALUES (?, ?, ?, ?, ?)",

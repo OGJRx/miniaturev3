@@ -7,6 +7,8 @@ import { BookingCoreService } from "../../shared/services/booking-core";
 import { WhatsAppApi } from "../../shared/whatsapp/whatsapp-api";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
 import { formatHourTo12, formatDateFriendly } from "../../shared/ui/formatters";
+import { BorgLogger } from "../../shared/services/borg-logger";
+import { getPlatformErrorFallback } from "../../shared/services/response-helper";
 
 export class WhatsAppBookingOrchestrator {
   private api: WhatsAppApi;
@@ -21,68 +23,85 @@ export class WhatsAppBookingOrchestrator {
   }
 
   async handleMessage(phoneNumber: string, text: string) {
-    const session = await this.core.getSession(
-      phoneNumber,
-      phoneNumber,
-      "whatsapp",
-    );
-
-    const lowerText = text.toLowerCase().trim();
-
-    // Trigger starting or restarting the flow
-    if (lowerText.includes("agendar")) {
-      const result = await this.core.handleAction(
-        session,
-        "start_booking",
-        "0",
+    try {
+      const session = await this.core.getSession(
+        phoneNumber,
+        phoneNumber,
+        "whatsapp",
       );
-      return await this.renderStep(phoneNumber, result.step, result.newState);
-    }
 
-    // Initial greeting or general "hola"
-    if (lowerText === "hola" || session.paso_actual === 0) {
-      if (session.paso_actual === 0) {
-        return await this.api.sendMessage(
-          phoneNumber,
-          "🔱 *Bienvenido al Taller Titanium*\n\n" +
-            "Soy Borg, tu asistente de servicio automotriz.\n\n" +
-            "Escribe *Agendar* para iniciar tu cita o solicitar información.",
-        );
-      }
-    }
+      const lowerText = text.toLowerCase().trim();
 
-    if (session.paso_actual > 0) {
-      const selection = parseInt(text.trim(), 10);
-      if (!isNaN(selection)) {
-        const processed = await this.handleSelection(
-          phoneNumber,
+      // Trigger starting or restarting the flow
+      if (lowerText.includes("agendar")) {
+        const result = await this.core.handleAction(
           session,
-          selection,
+          "start_booking",
+          "0",
         );
-        if (processed) return;
+        return await this.renderStep(phoneNumber, result.step, result.newState);
       }
 
-      if (session.paso_actual === 4) {
-        const km = parseInt(text, 10);
-        if (!isNaN(km)) {
-          const result = await this.core.handleAction(
-            session,
-            "set_km",
-            String(km),
-          );
-          return await this.renderStep(
+      // Initial greeting or general "hola"
+      if (lowerText === "hola" || session.paso_actual === 0) {
+        if (session.paso_actual === 0) {
+          return await this.api.sendMessage(
             phoneNumber,
-            result.step,
-            result.newState,
+            "🔱 *Bienvenido al Taller Titanium*\n\n" +
+              "Soy Borg, tu asistente de servicio automotriz.\n\n" +
+              "Escribe *Agendar* para iniciar tu cita o solicitar información.",
           );
         }
       }
-    }
 
-    await this.api.sendMessage(
-      phoneNumber,
-      "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.",
-    );
+      if (session.paso_actual > 0) {
+        const selection = parseInt(text.trim(), 10);
+        if (!isNaN(selection)) {
+          const processed = await this.handleSelection(
+            phoneNumber,
+            session,
+            selection,
+          );
+          if (processed) return;
+        }
+
+        if (session.paso_actual === 4) {
+          const km = parseInt(text, 10);
+          if (!isNaN(km)) {
+            const result = await this.core.handleAction(
+              session,
+              "set_km",
+              String(km),
+            );
+            return await this.renderStep(
+              phoneNumber,
+              result.step,
+              result.newState,
+            );
+          }
+        }
+      }
+
+      await this.api.sendMessage(
+        phoneNumber,
+        "🔱 *Taller Titanium*\n\nEscribe *Agendar* para iniciar tu cita.",
+      );
+    } catch (error) {
+      const logger = new BorgLogger(
+        "WhatsAppBookingOrchestrator",
+        this.env.DB,
+        this.ctx.traceId,
+        this.ctx,
+      );
+      logger.error(
+        "handleMessage",
+        `Error in handleMessage: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      await this.api
+        .sendMessage(phoneNumber, getPlatformErrorFallback("whatsapp"))
+        .catch(() => {});
+    }
   }
 
   private async handleSelection(

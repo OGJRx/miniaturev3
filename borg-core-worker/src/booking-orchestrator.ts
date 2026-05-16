@@ -10,6 +10,8 @@ import {
   formatDateFriendly,
 } from "../../shared/ui/formatters";
 import { MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
+import { BorgLogger } from "../../shared/services/borg-logger";
+import { getPlatformErrorFallback } from "../../shared/services/response-helper";
 
 export class BookingOrchestrator {
   private async getCore(ctx: BorgContext<CoreEnv>) {
@@ -17,27 +19,46 @@ export class BookingOrchestrator {
   }
 
   async handleUpdate(ctx: BorgContext<CoreEnv>) {
-    const userId = ctx.from?.id;
-    const chatId = ctx.chat?.id || userId;
-    if (!userId || !chatId) return;
+    try {
+      const userId = ctx.from?.id;
+      const chatId = ctx.chat?.id || userId;
+      if (!userId || !chatId) return;
 
-    const core = await this.getCore(ctx);
-    const session = await core.getSession(
-      String(userId),
-      String(chatId),
-      "telegram",
-    );
+      const core = await this.getCore(ctx);
+      const session = await core.getSession(
+        String(userId),
+        String(chatId),
+        "telegram",
+      );
 
-    if (ctx.hasCommand("start")) {
-      return await this.handleStart(ctx);
-    }
+      if (ctx.hasCommand("start")) {
+        return await this.handleStart(ctx);
+      }
 
-    if (ctx.callbackQuery?.data) {
-      return await this.handleCallback(ctx, session);
-    }
+      if (ctx.callbackQuery?.data) {
+        return await this.handleCallback(ctx, session);
+      }
 
-    if (ctx.message?.text) {
-      return await this.handleText(ctx, session);
+      if (ctx.message?.text) {
+        return await this.handleText(ctx, session);
+      }
+    } catch (error) {
+      const logger =
+        ctx.logger ||
+        new BorgLogger(
+          "BookingOrchestrator",
+          ctx.env.DB,
+          ctx.traceId,
+          ctx.executionContext,
+        );
+      logger.error(
+        "handleUpdate",
+        `Error in handleUpdate: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      await ctx
+        .reply(getPlatformErrorFallback("telegram"), { parse_mode: "HTML" })
+        .catch(() => {});
     }
   }
 
@@ -125,10 +146,12 @@ export class BookingOrchestrator {
       this.populateKeyboard(k, buttons, session.paso_actual);
     }
 
-    return await UiManager.safeEditOrReply(ctx, step.message, {
+    const replyPromise = UiManager.safeEditOrReply(ctx, step.message, {
       reply_markup: k,
       parse_mode: "HTML",
     });
+    ctx.executionContext.waitUntil(replyPromise);
+    return;
   }
 
   private async handleConfirmed(
@@ -178,13 +201,21 @@ export class BookingOrchestrator {
       keyboard.url("🌐 Ver en Google Maps", loc.mapsUrl);
     }
 
-    await UiManager.safeEditOrReply(ctx, summary, {
+    const summaryPromise = UiManager.safeEditOrReply(ctx, summary, {
       parse_mode: "HTML",
-      reply_markup: keyboard.inline_keyboard.length > 0 ? keyboard : undefined,
+      ...(keyboard.inline_keyboard.length > 0
+        ? { reply_markup: keyboard }
+        : {}),
     });
+    ctx.executionContext.waitUntil(summaryPromise);
 
     if (loc.latitud !== 0 && loc.longitud !== 0 && ctx.chat) {
-      await ctx.api.sendLocation(ctx.chat.id, loc.latitud, loc.longitud);
+      const locPromise = ctx.api.sendLocation(
+        ctx.chat.id,
+        loc.latitud,
+        loc.longitud,
+      );
+      ctx.executionContext.waitUntil(locPromise);
     }
     return;
   }
