@@ -141,4 +141,4 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
         fetchAppointments();
     </script>
 </body>
-</html>\`;
+</html>`;

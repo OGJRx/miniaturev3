@@ -13,7 +13,10 @@ export class PricingService {
       .first<{ base_price: number }>();
 
     if (!res) {
-      logger.warn("PRICING_FALLBACK", `No price found for service '${service}'. Using default 100.`);
+      logger.warn(
+        "PRICING_FALLBACK",
+        `No price found for service '${service}'. Using default 100.`,
+      );
       return 100;
     }
     return res.base_price;

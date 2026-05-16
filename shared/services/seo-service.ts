@@ -15,8 +15,8 @@ export class SeoService {
       pending = await db
         .prepare(
           "SELECT q.id, q.ticket_id, q.msg_number, t.platform_chat_id, t.platform " +
-          "FROM seo_message_queue q JOIN tickets t ON q.ticket_id = t.ticket_id " +
-          "WHERE q.status = 'pending' AND q.scheduled_for <= ?",
+            "FROM seo_message_queue q JOIN tickets t ON q.ticket_id = t.ticket_id " +
+            "WHERE q.status = 'pending' AND q.scheduled_for <= ?",
         )
         .bind(now)
         .all<{
@@ -27,7 +27,10 @@ export class SeoService {
           platform: "telegram" | "whatsapp";
         }>();
     } catch (e: unknown) {
-      logger.error("SEO_QUEUE_FETCH", `Error fetching SEO queue: ${e instanceof Error ? e.message : String(e)}`);
+      logger.error(
+        "SEO_QUEUE_FETCH",
+        `Error fetching SEO queue: ${e instanceof Error ? e.message : String(e)}`,
+      );
       return;
     }
 
@@ -46,7 +49,10 @@ export class SeoService {
         } else if (msg.platform === "whatsapp") {
           await whatsappApi.sendMessage(msg.platform_chat_id, text);
         } else {
-          logger.warn("SEO_DISPATCH", `Unknown platform '${msg.platform}' for ticket ${msg.ticket_id}`);
+          logger.warn(
+            "SEO_DISPATCH",
+            `Unknown platform '${msg.platform}' for ticket ${msg.ticket_id}`,
+          );
           continue;
         }
 
@@ -57,9 +63,15 @@ export class SeoService {
           .bind(msg.id)
           .run();
 
-        logger.info("SEO_DISPATCH", `Message ${msg.msg_number} sent to ${msg.platform}:${msg.platform_chat_id} for ticket ${msg.ticket_id}`);
+        logger.info(
+          "SEO_DISPATCH",
+          `Message ${msg.msg_number} sent to ${msg.platform}:${msg.platform_chat_id} for ticket ${msg.ticket_id}`,
+        );
       } catch (e: unknown) {
-        logger.error("SEO_DISPATCH", `Failed to send SEO message ${msg.id}: ${e instanceof Error ? e.message : String(e)}`);
+        logger.error(
+          "SEO_DISPATCH",
+          `Failed to send SEO message ${msg.id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
       }
     }
   }
