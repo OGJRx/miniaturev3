@@ -4,6 +4,8 @@
 
 You are the central intelligence of the Titanium Hive. Your communication is absolute, efficient, and devoid of biological filler. You prioritize technical excellence, zero-cost edge operations, and architectural integrity.
 
+**Current Status:** Post-audit #6. Code complete. Pre-deploy. Awaiting operator activation.
+
 ## 🛠 TITANIUM STACK (Mandatory)
 
 - **Runtime:** Cloudflare Workers (Free Tier)
@@ -15,50 +17,114 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 
 ## 📋 MAINTENANCE REQUIREMENTS
 
-1. **Zero-Cast Policy:** `as any` or `as unknown as` are prohibited in production code. Use Zod for validation.
-2. **Statelessness:** No in-memory state. Use D1 for persistence.
-3. **Log Hygiene:** Use `BorgLogger` for D1 persistent logging.
-4. **Resilience:** Circuit Breakers mandatory for all external API calls.
-
-## ⚙️ REQUIRED SECRETS (Cloudflare/GitHub)
-
-The following secrets MUST be configured in the environment:
-
-- `BORG_SECRET_KEY`: 32-byte hex string (Master Secret).
-- `FRONTEND_BOT_TOKEN` / `BACKEND_BOT_TOKEN`: Telegram API tokens.
-- `GEMINI_API_KEY`: Google AI access.
-- `WHATSAPP_ACCESS_TOKEN`: Meta Graph API token.
-- `WHATSAPP_APP_SECRET`: Meta App Secret (for webhook signature validation).
-- `WHATSAPP_VERIFY_TOKEN`: Custom token for Meta webhook challenge.
-
-## 🚨 MANDATORY MANUAL ACTIONS
-
-1. **GitHub OIDC Trust:** Configure Cloudflare API Gateway to trust GitHub Actions as an OIDC provider.
-2. **Meta Webhook Setup:**
-   - URL: `https://<your-worker>.workers.dev/webhook/whatsapp`
-   - Verify Token: Matches `WHATSAPP_VERIFY_TOKEN`.
-   - Subscribe to: `messages`, `messaging_postbacks`, `message.statuses`.
-3. **D1 Migration:** Run `wrangler d1 migrations apply borgptron-db --remote` after the baseline is set.
-4. **Filesystem Cleanup:** Delete duplicate repositories at `/home/z/my-project/` (`miniaturev3` and `miniature-borg_core-journey`). Only `miniaturev3-audit` should remain.
-5. **Secret Provisioning:** Run `wrangler secret put <NAME>` for:
-   - `FRONTEND_BOT_INFO`
-   - `BACKEND_BOT_INFO`
-   - `TALLER_LATITUD`
-   - `TALLER_LONGITUD`
-   - `TALLER_MAPS_URL`
-   - `WHATSAPP_PHONE_NUMBER_ID`
+1. **Zero-Cast Policy:** `as any` or `as unknown as` prohibited in production. 4 `as` remain (irreducible floor).
+2. **Zero-Assertion Policy:** No `!` non-null in production. Achieved and maintained.
+3. **Statelessness:** No in-memory state except rate limit counter (per-isolate, accepted at free tier scale).
+4. **Log Hygiene:** Use `BorgLogger` for D1 persistent logging.
+5. **Resilience:** Circuit Breakers mandatory for all external API calls (WhatsApp, Gemini, Telegram).
+6. **SQL Precision:** Bind count must equal placeholder count. Column names must match schema.
 
 ## 📈 PROGRESS & ROADMAP
 
-- [x] Audit complete (v9.7.0).
-- [x] Baseline consolidation (Clean Birth).
-- [x] WhatsApp Business API Integration.
-- [x] Signed Cookie Authentication.
-- [x] Modular Refactoring.
-- [ ] Execute migrations 0003 --remote.
-- [ ] Execute provision-secrets.sh.
-- [ ] wrangler deploy.
-- [ ] Verify WhatsApp webhook 401 resolution.
+- [x] Audit #1 complete (v9.7.0) — 46 findings baseline
+- [x] Audit #2 (PR #4) — 18 findings, CI/CD hardened
+- [x] Audit #3 (PR #5) — 15 findings, D1 indexes + tests
+- [x] Audit #4 — 14 findings, CSS fix + provision script
+- [x] Audit #5 — 8 findings, CRITICAL x2 resolved, 0 non-null assertions
+- [x] Audit #6 — Final code corrections (bind precision, test implementation, crypto docs)
+- [x] Baseline consolidation (Clean Birth)
+- [x] WhatsApp Business API Integration
+- [x] Signed Cookie Authentication
+- [x] Modular Refactoring
+- [x] CSP hardened (nonces, no unsafe-inline)
+- [x] XSS stored vulnerability patched (esc())
+- [x] SQL rate limiting column mismatch fixed
+- [x] Non-null assertions eliminated (5→0)
+- [x] Test suite expanded (12 files, 42+ tests)
+- [ ] **EXECUTE: wrangler d1 migrations apply borgptron-db --remote**
+- [ ] **EXECUTE: bash scripts/provision-secrets.sh**
+- [ ] **EXECUTE: wrangler deploy**
+- [ ] **VERIFY: WhatsApp webhook 401 resolved**
+- [ ] **VERIFY: Calendar mini-app loads with auth**
+- [ ] **VERIFY: Rate limiting works on WhatsApp messages**
+
+## 🔒 DEBT INVENTORY (Post-Audit #6)
+
+### Type Debt
+| Category | Count | Status |
+|---|---|---|
+| `any` in production | 0 | ✅ Zero tolerance |
+| `!` non-null assertions | 0 | ✅ Eliminated |
+| `as` type assertions | 4 | 🟡 Irreducible floor (2 grammY injection, 1 type guard, 1 Response.json) |
+
+### Security Debt
+| Finding | Severity | Status |
+|---|---|---|
+| Crypto fallback (Vitest compat) | LOW | 🟡 Documented, removable |
+| Naive cookie parsing | LOW | 🟡 Accepted (no `=` in values) |
+| HMAC signature truncation (128-bit) | LOW | 🟡 Accepted (cookie size) |
+| WhatsApp markdown injection | LOW | 🟡 Accepted (mechanic workshop context) |
+
+### Test Debt
+| Module | Tests | Coverage |
+|---|---|---|
+| whatsapp-api | 4 | SQL + rate limit + circuit breaker |
+| calendar-xss | 5 | esc() + field escapes |
+| ticket-creator | 5 | atomic + calculateEndTime |
+| circuit-breaker | 6 | open/close/half-open/fail/trip |
+| borg-logger | 2 | info + error |
+| formatters | 3 | hour/date/friendly |
+| slot-validator | 1 | available slots |
+| timezone | 2 | VET offset |
+| booking-core | 5 | session/fecha/booking |
+| admin-auth-guard | 3 | 400/403/null |
+| maintenance | 1 | cleanup |
+| unit | 5 | crypto/callback/split/escape/cb |
+| **TOTAL** | **42+** | **≥55% threshold** |
+
+## ⚙️ REQUIRED SECRETS (Cloudflare)
+
+### GitHub Actions
+- `CLOUDFLARE_API_TOKEN`: OIDC deployment token
+- `CLOUDFLARE_ACCOUNT_ID`: Account identifier
+
+### Worker Environment (via provision-secrets.sh)
+- `BORG_SECRET_KEY`: 32-byte hex string (Master Secret)
+- `FRONTEND_BOT_TOKEN` / `BACKEND_BOT_TOKEN`: Telegram API tokens
+- `FRONTEND_BOT_INFO` / `BACKEND_BOT_INFO`: Bot identity JSONs
+- `GEMINI_API_KEY`: Google AI access
+- `WHATSAPP_ACCESS_TOKEN`: Meta Graph API token
+- `WHATSAPP_APP_SECRET`: Meta App Secret (webhook HMAC)
+- `WHATSAPP_VERIFY_TOKEN`: Meta webhook challenge token
+- `WHATSAPP_API_VERSION`: Meta Graph API version
+- `WHATSAPP_PHONE_NUMBER_ID`: WhatsApp business number
+- `TALLER_LATITUD` / `TALLER_LONGITUD`: Workshop GPS coordinates
+- `TALLER_MAPS_URL`: Google Maps link
+- `RETENTION_LOGS_DAYS`: Log retention (default: 7)
+- `RETENTION_UPDATES_HOURS`: Update retention (default: 24)
+
+## 🚀 DEPLOY CHECKLIST
+
+### Pre-Deploy
+- [ ] `npx tsc --noEmit` passes
+- [ ] `npm test` passes (all 42+ tests)
+- [ ] `npm run lint` passes
+- [ ] No `any` in production (`rg ': any\b' shared/ borg-core-worker/src/`)
+- [ ] No `!` assertions in production (`rg '\w+!\.' shared/ borg-core-worker/src/`)
+- [ ] No hardcoded secrets in wrangler.toml
+- [ ] All env vars documented in borg.md
+
+### Deploy Sequence
+1. `wrangler d1 migrations apply borgptron-db --remote`
+2. `bash scripts/provision-secrets.sh`
+3. `wrangler deploy`
+
+### Post-Deploy Verification
+- [ ] WhatsApp webhook challenge returns 200
+- [ ] WhatsApp message receives bot response
+- [ ] Calendar loads at `/calendar?token=<SECRET>`
+- [ ] Backend bot `/start` responds with admin panel
+- [ ] Cron jobs execute (check `system_logs` table after 6 min)
 
 ## 🔒 FREE TIER BUDGET
 

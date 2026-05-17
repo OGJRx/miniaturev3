@@ -51,8 +51,8 @@ describe("BookingCoreService", () => {
     expect(result.newState.fecha_cita).toBe("2099-10-12");
   });
 
-  it("handleAction conf_booking should throw error if ticket_id is missing", async () => {
-    const _session = {
+  it("handleAction conf_booking returns CONFIRMED and ticket_id on success", async () => {
+    const session: any = {
       session_id: "S123",
       paso_actual: 8,
       platform_user_id: "U123",
@@ -62,24 +62,19 @@ describe("BookingCoreService", () => {
       vehiculo_era: "2010-2020",
       kilometraje: 50000,
       servicio_solicitado: "Cambio de Aceite",
-      fecha_cita: "2024-10-10",
+      fecha_cita: "2099-10-12",
       hora_cita: "10:00",
-    } as any;
+    };
 
-    // We need to mock the TicketCreator used inside handleAction
-    // Since it's imported, we might need a more complex mock or rely on the fact
-    // that it uses dbMock.run() and we can control its return.
+    dbMock.run.mockResolvedValueOnce({ meta: { changes: 1 } }); // Session update
+    dbMock.run.mockResolvedValueOnce({ meta: { changes: 1 } }); // Ticket creation in createTicketAtomic
 
-    // Actually, TicketCreator.createTicketAtomic returns {success: true, ticket_id}
-    // and handleAction uses it.
+    const result = await service.handleAction(session, "conf_booking", "yes");
 
-    dbMock.run.mockResolvedValueOnce({ meta: { changes: 1 } });
-    // This would make createTicketAtomic return {success: true, ticket_id: "T-..."}
-    // because ticket_id is generated inside createTicketAtomic.
-
-    // To test the throw, we'd need createTicketAtomic to return success: true but no ticket_id.
-    // But ticket_id is generated locally in createTicketAtomic.
-
-    // Wait, let's look at TicketCreator again.
+    expect(result.step.status).toBe("CONFIRMED");
+    expect(result.step.options).toBeDefined();
+    expect(result.step.options![0]?.label).toBe("ticket_id");
+    expect(result.step.options![0]?.value).toMatch(/^T-\d+/);
+    expect(result.newState.estado_flujo).toBe("confirmado");
   });
 });

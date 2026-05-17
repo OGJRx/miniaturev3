@@ -9,13 +9,17 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
   const aHashArray = new Uint8Array(aHash);
   const bHashArray = new Uint8Array(bHash);
 
-  // In production (Cloudflare Workers), timingSafeEqual is available.
-  // In test environments (Vitest/Node), it might not be.
+  // timingSafeEqual is available natively in Cloudflare Workers (V8 engine).
+  // The fallback below exists solely for Vitest compatibility (Node.js < 20),
+  // where crypto.subtle.timingSafeEqual may not be available.
+  // To remove this fallback: configure Vitest with Node 20+ or add a
+  // crypto.subtle.timingSafeEqual polyfill in tests/setup.ts.
   if (hasTimingSafeEqual(crypto.subtle)) {
     return crypto.subtle.timingSafeEqual(aHash, bHash);
   }
 
-  // Fallback for environments where timingSafeEqual is not available (like Vitest)
+  // Fallback for environments where timingSafeEqual is not available (like Vitest).
+  // TODO(audit): Remove fallback once Vitest environment guarantees timingSafeEqual.
   if (aHashArray.length !== bHashArray.length) return false;
   let r = 0;
   for (let i = 0; i < aHashArray.length; i++) {
