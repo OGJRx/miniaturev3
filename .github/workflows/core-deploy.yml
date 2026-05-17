@@ -125,6 +125,7 @@ jobs:
         uses: cloudflare/wrangler-action@v3
         with:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: d1 migrations apply borgptron-db --remote
           workingDirectory: borg-core-worker
         # NOTE: GitHub OIDC Trust Relationship must be configured in Cloudflare Dashboard:
