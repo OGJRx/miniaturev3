@@ -121,17 +121,6 @@ jobs:
           WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
           WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
 
-      - name: 🗄️ Apply D1 Migrations
-        uses: cloudflare/wrangler-action@v3
-        with:
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          command: d1 execute borgptron-db --remote --command="SELECT 1"
-          workingDirectory: borg-core-worker
-        # NOTE: GitHub OIDC Trust Relationship must be configured in Cloudflare Dashboard:
-        # Workers & Pages > Settings > GitHub Actions OIDC.
-        # Ensure the 'accountId' is provided and 'apiToken' is omitted or empty.
-
       - name: 🔱 Deploy Core Worker
         id: deploy
         uses: cloudflare/wrangler-action@v3
