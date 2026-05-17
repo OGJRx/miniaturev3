@@ -29,17 +29,10 @@ export class WhatsAppApi {
         .prepare(
           "INSERT INTO rate_limits (identity_key, window_start, window_end, request_count) VALUES (?, ?, ?, 1) " +
             "ON CONFLICT(identity_key) DO UPDATE SET request_count = CASE WHEN window_end < ? THEN 1 ELSE request_count + 1 END, " +
-            "window_end = CASE WHEN window_end < ? THEN ? ELSE window_end END " +
+            "window_end = CASE WHEN window_end < excluded.window_end THEN ? ELSE window_end END " +
             "RETURNING request_count, window_end",
         )
-        .bind(
-          to,
-          windowStart,
-          windowStart,
-          windowStart,
-          windowStart,
-          windowStart,
-        )
+        .bind(to, windowStart, windowStart, windowStart, windowStart)
         .first<{ request_count: number }>();
 
       if (res && res.request_count > 3) return false;

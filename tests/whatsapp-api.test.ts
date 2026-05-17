@@ -55,7 +55,6 @@ describe("WhatsAppApi", () => {
         windowStart,
         windowStart,
         windowStart,
-        windowStart,
       );
     });
 
