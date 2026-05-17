@@ -11,21 +11,33 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
 
   // In production (Cloudflare Workers), timingSafeEqual is available.
   // In test environments (Vitest/Node), it might not be.
-  if ("timingSafeEqual" in crypto.subtle) {
-    return (
-      crypto.subtle as unknown as {
-        timingSafeEqual: (a: ArrayBuffer, b: ArrayBuffer) => boolean;
-      }
-    ).timingSafeEqual(aHash, bHash);
+  if (hasTimingSafeEqual(crypto.subtle)) {
+    return crypto.subtle.timingSafeEqual(aHash, bHash);
   }
 
   // Fallback for environments where timingSafeEqual is not available (like Vitest)
   if (aHashArray.length !== bHashArray.length) return false;
   let r = 0;
   for (let i = 0; i < aHashArray.length; i++) {
-    r |= aHashArray[i] ^ bHashArray[i];
+    const aVal = aHashArray[i];
+    const bVal = bHashArray[i];
+    if (aVal !== undefined && bVal !== undefined) {
+      r |= aVal ^ bVal;
+    }
   }
   return r === 0;
+}
+
+interface SubtleWithTimingSafeEqual extends SubtleCrypto {
+  timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean;
+}
+
+function hasTimingSafeEqual(
+  subtle: SubtleCrypto,
+): subtle is SubtleWithTimingSafeEqual {
+  return (
+    "timingSafeEqual" in subtle && typeof subtle.timingSafeEqual === "function"
+  );
 }
 
 export async function hmacSha256(
