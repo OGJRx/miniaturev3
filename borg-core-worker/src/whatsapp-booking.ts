@@ -114,7 +114,8 @@ export class WhatsAppBookingOrchestrator {
       return false;
     }
 
-    const opt = step.options[selection - 1]!;
+    const opt = step.options[selection - 1];
+    if (!opt) return false;
     const actionMap: Record<number, string> = {
       1: "set_tipo",
       2: opt.value === "HELP" ? "motor_help" : "set_motor",

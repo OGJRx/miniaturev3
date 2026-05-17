@@ -86,6 +86,7 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
     </div>
 
     <script nonce="__NONCE__">
+        function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
         async function fetchAppointments() {
             const container = document.getElementById('appointments-container');
             try {
@@ -108,20 +109,20 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
                 container.innerHTML = Object.entries(grouped)
                     .sort(([a], [b]) => a.localeCompare(b))
                     .map(([date, appts]) => {
-                        const dateBadge = '<span class="bg-slate-800 px-3 py-1 rounded-md">' + date + '</span>';
+                        const dateBadge = '<span class="bg-slate-800 px-3 py-1 rounded-md">' + esc(date) + '</span>';
                         const cards = appts.sort((a, b) => a.hora_cita.localeCompare(b.hora_cita)).map(appt => {
                             return '<div class="appointment-card flex justify-between items-center">' +
                                         '<div>' +
                                             '<div class="flex items-center gap-2">' +
-                                                '<span class="text-blue-300 font-mono font-bold text-lg">' + appt.hora_cita + '</span>' +
+                                                '<span class="text-blue-300 font-mono font-bold text-lg">' + esc(appt.hora_cita) + '</span>' +
                                                 '<span class="text-slate-500">|</span>' +
-                                                '<span class="font-semibold">' + appt.vehiculo_tipo + '</span>' +
+                                                '<span class="font-semibold">' + esc(appt.vehiculo_tipo) + '</span>' +
                                             '</div>' +
-                                            '<div class="text-slate-400 text-sm mt-1">' + appt.servicio_solicitado + '</div>' +
+                                            '<div class="text-slate-400 text-sm mt-1">' + esc(appt.servicio_solicitado) + '</div>' +
                                         '</div>' +
                                         '<div class="text-right">' +
-                                            '<div class="text-xs uppercase font-bold tracking-wider status-' + appt.estado + '">' + appt.estado + '</div>' +
-                                            '<div class="text-[10px] text-slate-600 mt-1 font-mono">' + appt.ticket_id + '</div>' +
+                                            '<div class="text-xs uppercase font-bold tracking-wider status-' + esc(appt.estado) + '">' + esc(appt.estado) + '</div>' +
+                                            '<div class="text-[10px] text-slate-600 mt-1 font-mono">' + esc(appt.ticket_id) + '</div>' +
                                         '</div>' +
                                     '</div>';
                         }).join('');
@@ -134,7 +135,7 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
 
             } catch (err) {
                 container.innerHTML = '<div class="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg text-center">' +
-                    '⚠️ Error: ' + err.message + '. Asegúrate de estar autenticado.' +
+                    '⚠️ Error: ' + esc(err.message) + '. Asegúrate de estar autenticado.' +
                 '</div>';
             }
         }

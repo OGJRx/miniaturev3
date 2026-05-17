@@ -9,20 +9,21 @@ export async function timingSafeEqual(a: string, b: string): Promise<boolean> {
   const aHashArray = new Uint8Array(aHash);
   const bHashArray = new Uint8Array(bHash);
 
-  function hasTimingSafeEqual(s: SubtleCrypto): s is SubtleCrypto & {
-    timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean;
-  } {
-    return "timingSafeEqual" in s && typeof s.timingSafeEqual === "function";
+  // In production (Cloudflare Workers), timingSafeEqual is available.
+  // In test environments (Vitest/Node), it might not be.
+  if ("timingSafeEqual" in crypto.subtle) {
+    return (
+      crypto.subtle as unknown as {
+        timingSafeEqual: (a: ArrayBuffer, b: ArrayBuffer) => boolean;
+      }
+    ).timingSafeEqual(aHash, bHash);
   }
 
-  if (hasTimingSafeEqual(crypto.subtle)) {
-    return crypto.subtle.timingSafeEqual(aHash, bHash);
-  }
-
+  // Fallback for environments where timingSafeEqual is not available (like Vitest)
   if (aHashArray.length !== bHashArray.length) return false;
   let r = 0;
   for (let i = 0; i < aHashArray.length; i++) {
-    r |= aHashArray[i]! ^ bHashArray[i]!;
+    r |= aHashArray[i] ^ bHashArray[i];
   }
   return r === 0;
 }

@@ -67,7 +67,9 @@ export class TicketCreator {
   ): Promise<{ success: boolean; ticket_id: string }> {
     const res = await this.createTicketAtomic(s);
     if (!res.success) throw new Error("Slot already occupied");
-    return { success: true, ticket_id: res.ticket_id! };
+    if (!res.ticket_id)
+      throw new Error("ticket_id missing after atomic insert");
+    return { success: true, ticket_id: res.ticket_id };
   }
 }
 
