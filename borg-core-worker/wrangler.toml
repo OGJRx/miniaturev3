@@ -22,6 +22,7 @@ WHATSAPP_API_VERSION = "v25.0"
 binding = "DB"
 database_name = "borgptron-db"
 database_id = "80185899-29c6-4888-9265-64c3dc49ba2f"
+migrations_dir = "migrations"
 
 [triggers]
 crons = [
