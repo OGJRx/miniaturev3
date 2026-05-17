@@ -10,7 +10,7 @@ export class AdminNotificationService {
     await this.db
       .prepare(
         "INSERT INTO admin_notifications (ticket_id, vehiculo_tipo, vehiculo_motor, vehiculo_era, " +
-          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, platform_user_id) " +
+          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, telegram_user_id) " +
           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
@@ -22,7 +22,7 @@ export class AdminNotificationService {
         record.fecha_cita,
         record.hora_cita,
         record.kilometraje,
-        record.platform_user_id,
+        record.telegram_user_id,
       )
       .run();
   }
@@ -34,7 +34,7 @@ export class AdminNotificationService {
     const res = await this.db
       .prepare(
         "SELECT id, ticket_id, vehiculo_tipo, vehiculo_motor, vehiculo_era, " +
-          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, platform_user_id, created_at " +
+          "servicio_solicitado, fecha_cita, hora_cita, kilometraje, telegram_user_id, created_at " +
           "FROM admin_notifications ORDER BY created_at DESC LIMIT ? OFFSET ?",
       )
       .bind(limit, offset)
@@ -96,7 +96,7 @@ export class AdminNotificationService {
       fecha_cita: session.fecha_cita || "",
       hora_cita: session.hora_cita || "",
       kilometraje: session.kilometraje ?? 0,
-      platform_user_id: session.platform_user_id,
+      telegram_user_id: session.telegram_user_id,
     });
   }
 }

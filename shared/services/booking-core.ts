@@ -27,7 +27,7 @@ export class BookingCoreService {
   ): Promise<EphemeralState> {
     const res = await this.db
       .prepare(
-        "SELECT session_id, platform_user_id, platform_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE platform_user_id = ? AND platform = ? AND bot_type = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY updated_at DESC LIMIT 1",
+        "SELECT session_id, telegram_user_id, telegram_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE telegram_user_id = ? AND platform = ? AND bot_type = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY updated_at DESC LIMIT 1",
       )
       .bind(platformUserId, platform, botType)
       .first<EphemeralState>();
@@ -38,8 +38,8 @@ export class BookingCoreService {
     const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
     const newState: EphemeralState = {
       session_id: sessionId,
-      platform_user_id: platformUserId,
-      platform_chat_id: platformChatId,
+      telegram_user_id: platformUserId,
+      telegram_chat_id: platformChatId,
       platform: platform,
       estado_flujo: "iniciado",
       paso_actual: 0,
@@ -49,7 +49,7 @@ export class BookingCoreService {
 
     await this.db
       .prepare(
-        "INSERT INTO sessions (session_id, platform_user_id, platform_chat_id, platform, bot_type, estado_flujo, paso_actual, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sessions (session_id, telegram_user_id, telegram_chat_id, platform, bot_type, estado_flujo, paso_actual, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .bind(
         sessionId,

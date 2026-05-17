@@ -25,7 +25,7 @@ export class TicketCreator {
 
     const res = await this.db
       .prepare(
-        `INSERT INTO tickets (ticket_id, session_id, platform_user_id, platform_chat_id, platform,
+        `INSERT INTO tickets (ticket_id, session_id, telegram_user_id, telegram_chat_id, platform,
         vehiculo_tipo, vehiculo_motor, vehiculo_era, servicio_solicitado, fecha_cita, hora_cita, hora_fin, kilometraje)
         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         WHERE NOT EXISTS (
@@ -37,8 +37,8 @@ export class TicketCreator {
       .bind(
         ticket_id,
         s.session_id,
-        s.platform_user_id,
-        s.platform_chat_id || "",
+        s.telegram_user_id,
+        s.telegram_chat_id || "",
         s.platform,
         s.vehiculo_tipo,
         s.vehiculo_motor,

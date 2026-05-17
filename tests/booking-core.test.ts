@@ -32,7 +32,7 @@ describe("BookingCoreService", () => {
     dbMock.first.mockResolvedValueOnce(null);
     const session = await service.getSession("user1", "chat1", "telegram");
 
-    expect(session.platform_user_id).toBe("user1");
+    expect(session.telegram_user_id).toBe("user1");
     expect(dbMock.prepare).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO sessions"),
     );
@@ -55,7 +55,7 @@ describe("BookingCoreService", () => {
     const session: any = {
       session_id: "S123",
       paso_actual: 8,
-      platform_user_id: "U123",
+      telegram_user_id: "U123",
       platform: "whatsapp",
       vehiculo_tipo: "SUV",
       vehiculo_motor: "Gasolina",

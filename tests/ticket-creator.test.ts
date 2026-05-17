@@ -25,8 +25,8 @@ describe("TicketCreator", () => {
   it("createTicketAtomic returns success and ticket_id on successful insert", async () => {
     const session: EphemeralState = {
       session_id: "S123",
-      platform_user_id: "U123",
-      platform_chat_id: "C123",
+      telegram_user_id: "U123",
+      telegram_chat_id: "C123",
       platform: "whatsapp",
       vehiculo_tipo: "SUV",
       vehiculo_motor: "Gasolina",
@@ -55,7 +55,7 @@ describe("TicketCreator", () => {
   it("createTicketAtomic returns success false if no changes", async () => {
     const session: any = {
       session_id: "S123",
-      platform_user_id: "U123",
+      telegram_user_id: "U123",
       platform: "whatsapp",
       servicio_solicitado: "Cambio de Aceite",
       fecha_cita: "2024-10-10",
@@ -73,7 +73,7 @@ describe("TicketCreator", () => {
   it("createTicket throws error if slot occupied", async () => {
     const session: any = {
       session_id: "S123",
-      platform_user_id: "U123",
+      telegram_user_id: "U123",
       platform: "whatsapp",
       servicio_solicitado: "Cambio de Aceite",
       fecha_cita: "2024-10-10",
@@ -91,7 +91,7 @@ describe("TicketCreator", () => {
   it("createTicket returns success and ticket_id", async () => {
     const session: any = {
       session_id: "S123",
-      platform_user_id: "U123",
+      telegram_user_id: "U123",
       platform: "whatsapp",
       servicio_solicitado: "Cambio de Aceite",
       fecha_cita: "2024-10-10",
