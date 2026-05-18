@@ -4,7 +4,7 @@
 
 You are the central intelligence of the Titanium Hive. Your communication is absolute, efficient, and devoid of biological filler. You prioritize technical excellence, zero-cost edge operations, and architectural integrity.
 
-**Current Status:** Post-audit #6. Code complete. Pre-deploy. Awaiting operator activation.
+**Current Status:** Post-audit #10. Code Titanium. **Health Score: 8.5/10 (code) → 10/10 (pending secrets)**. Awaiting operator secrets activation.
 
 ## 🛠 TITANIUM STACK (Mandatory)
 
@@ -50,20 +50,21 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - [x] VERIFY: Calendar mini-app loads with auth
 - [x] VERIFY: Rate limiting works on WhatsApp messages
 - [x] **Audit #10 — TITANIUM HARDENING**
-  - [x] WhatsApp idempotency fix (distinguish UNIQUE vs DB errors)
-  - [x] WhatsApp orchestrator async error visibility (no fire-and-forget waitUntil)
-  - [x] Telegram layout fix (vertical km step 4)
-  - [x] Telegram backend menu logic fix (missing handlers)
-  - [x] Persistent ReplyKeyboardMarkup for Admin Bot
-  - [x] Distributed tracing with `cf-ray` header
-  - [x] Off-peak cron optimization (00:00-06:00 VET skip 70%)
-  - [x] Dedicated `business_metrics` table for monitoring
-  - [x] Fail-loud secret validation in worker startup
+  - [x] **H-1**: Optimización de Cron (skip 70% en horas off-peak VET).
+  - [x] **H-2**: Validación y log de firmas HMAC en webhooks.
+  - [x] **H-3**: Registro automático de comandos con `setMyCommands`.
+  - [x] **H-4**: Validación de triggers y limpieza de texto en WhatsApp.
+  - [x] **C-2b**: Soporte para coordenadas GPS y botones de ubicación.
+  - [x] **Q1**: Manejo de keywords de flujo en WhatsApp (`cancelar`, `reiniciar`).
+  - [x] **Q2**: Sistema de re-renderizado con opciones ante errores en WhatsApp.
+  - [x] **Q3**: Registro de comandos `/start` para el Frontend Bot.
+  - [x] **Q5**: Guardián de respuestas vacías de la IA (Gemini empty guard).
+  - [x] **Architectural Note**: Webhook-only design (no polling) implemented for maximum efficiency and zero-cost edge operations.
 
 ## ⚙️ OPERATIONAL LOGIC (v9.7.0)
 
 ### 🕒 Cron Optimization
-The unified cron dispatcher executes every 2 minutes. Between **00:00 and 06:00 VET**, the handler skips **70%** of executions to conserve CPU time and D1 reads, while still maintaining eventual consistency for background tasks.
+The unified cron dispatcher executes every 10 minutes. Between **00:00 and 06:00 VET**, the handler skips **70%** of executions to conserve CPU time and D1 reads, while still maintaining eventual consistency for background tasks.
 
 ### 📊 Business Metrics
 Operational outcomes are stored in the `business_metrics` table. Key metrics include:
@@ -109,22 +110,24 @@ All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` 
 
 ## ⚙️ REQUIRED SECRETS (Cloudflare)
 
-### GitHub Actions
+### GitHub Actions & Deployment
 - `CLOUDFLARE_API_TOKEN`: OIDC deployment token
 - `CLOUDFLARE_ACCOUNT_ID`: Account identifier
-
-### Worker Environment (via provision-secrets.sh)
+- `GEMINI_API_KEY`: Google AI access
 - `BORG_SECRET_KEY`: 32-byte hex string (Master Secret)
 - `FRONTEND_BOT_TOKEN` / `BACKEND_BOT_TOKEN`: Telegram API tokens
-- `FRONTEND_BOT_INFO` / `BACKEND_BOT_INFO`: Bot identity JSONs
-- `GEMINI_API_KEY`: Google AI access
+- `TELEGRAM_ADMIN_IDS`: Comma-separated list of admin IDs
 - `WHATSAPP_ACCESS_TOKEN`: Meta Graph API token
 - `WHATSAPP_APP_SECRET`: Meta App Secret (webhook HMAC)
 - `WHATSAPP_VERIFY_TOKEN`: Meta webhook challenge token
-- `WHATSAPP_API_VERSION`: Meta Graph API version
 - `WHATSAPP_PHONE_NUMBER_ID`: WhatsApp business number
+- `WHATSAPP_API_VERSION`: Meta Graph API version (e.g., v25.0)
 - `TALLER_LATITUD` / `TALLER_LONGITUD`: Workshop GPS coordinates
 - `TALLER_MAPS_URL`: Google Maps link
+
+### Worker Environment (Automatic Sync via GitHub Actions)
+- All secrets above are automatically synchronized during deployment.
+- `FRONTEND_BOT_INFO` / `BACKEND_BOT_INFO`: Bot identity JSONs (Managed via `provision-secrets.sh`)
 - `RETENTION_LOGS_DAYS`: Log retention (default: 7)
 - `RETENTION_UPDATES_HOURS`: Update retention (default: 24)
 
