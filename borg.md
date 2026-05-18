@@ -23,6 +23,7 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 4. **Log Hygiene:** Use `BorgLogger` for D1 persistent logging.
 5. **Resilience:** Circuit Breakers mandatory for all external API calls (WhatsApp, Gemini, Telegram).
 6. **SQL Precision:** Bind count must equal placeholder count. Column names must match schema.
+7. **D1 Policy:** Creation of new D1 instances is a last-resort action. Prohibited without verifying: (1) Token permissions, (2) `__d1_migrations` integrity, (3) `sqlite_master` state. `SQLITE_AUTH` is a permission error, not a state error.
 
 ## 📈 PROGRESS & ROADMAP
 
@@ -41,6 +42,7 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - [x] SQL rate limiting column mismatch fixed
 - [x] Non-null assertions eliminated (5→0)
 - [x] Test suite expanded (12 files, 42+ tests)
+- [x] Audit #9 — SQLITE_AUTH resolution + Workflow hardening
 - [ ] **EXECUTE: wrangler d1 migrations apply borgptron-db --remote**
 - [ ] **EXECUTE: bash scripts/provision-secrets.sh**
 - [ ] **EXECUTE: wrangler deploy**
@@ -104,6 +106,18 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - `RETENTION_UPDATES_HOURS`: Update retention (default: 24)
 
 ## 🚀 DEPLOY CHECKLIST
+
+### Autonomous vs. Manual Capabilities
+
+| Category | Action | Method | Responsibility |
+|---|---|---|---|
+| **D1** | Clean migration journal | CLI | Autonomous (Agent) |
+| **D1** | Check schema/entities | CLI | Autonomous (Agent) |
+| **D1** | Create/Edit DB Instance | GUI | Manual (Operator) |
+| **Auth** | Edit API Token Permissions | GUI | Manual (Operator) |
+| **Secrets** | Sync Worker Secrets | CLI | Autonomous (Agent) |
+| **Secrets** | Update GitHub Secrets | GUI | Manual (Operator) |
+| **Code** | Refactor/Delete migrations | Git | Autonomous (Agent) |
 
 ### Pre-Deploy
 - [ ] `npx tsc --noEmit` passes
