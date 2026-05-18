@@ -10,6 +10,11 @@ export class MenuFactory {
       .text(
         "🔔 Notificaciones",
         await buildCallback("adm_notifs", "0", secret),
+      )
+      .row()
+      .text(
+        "🔄 Actualizar Comandos",
+        await buildCallback("refresh_cmds", "0", secret),
       );
   }
 

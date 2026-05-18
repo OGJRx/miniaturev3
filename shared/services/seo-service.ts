@@ -37,6 +37,15 @@ export class SeoService {
     const telegramApi = TelegramApiFactory.create(env, "frontend");
     const whatsappApi = new WhatsAppApi(env, logger);
 
+    const messagesProcessed = pending.results.length;
+    await db
+      .prepare(
+        "INSERT INTO business_metrics (metric_key, metric_value, bot_type) VALUES (?, ?, ?)",
+      )
+      .bind("messages_processed", messagesProcessed, "seo_cron")
+      .run()
+      .catch((e) => console.error("[SeoService] Metrics error:", e));
+
     for (const msg of pending.results) {
       try {
         const text = `👋 ¡Hola! Esperamos que tu servicio para el ticket ${msg.ticket_id} haya sido excelente. ¿Tienes alguna duda adicional?`;

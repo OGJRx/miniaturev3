@@ -50,7 +50,9 @@ export class WhatsAppApi {
         CircuitService.WHATSAPP,
       )
     ) {
-      throw new Error("WhatsApp circuit breaker is open");
+      const errMsg = "WhatsApp circuit breaker is open";
+      this.logger?.error("whatsapp_api", errMsg);
+      throw new Error(errMsg);
     }
 
     if (!(await this.checkRateLimit(to))) {

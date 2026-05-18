@@ -49,8 +49,15 @@ export async function handleWhatsAppWebhook(
                 )
                   .bind(msg.id, msg.from)
                   .run();
-              } catch (_e: unknown) {
-                // If unique constraint fails, it's a duplicate
+              } catch (e: unknown) {
+                const errMsg = e instanceof Error ? e.message : String(e);
+                if (
+                  !errMsg.includes("UNIQUE constraint") &&
+                  !errMsg.includes("SQLITE_CONSTRAINT")
+                ) {
+                  console.error(`[WhatsAppWebhook] DB error: ${errMsg}`);
+                  return new Response("Internal Server Error", { status: 500 });
+                }
                 console.log(`[WhatsAppWebhook] Duplicate message: ${msg.id}`);
                 continue;
               }
@@ -71,9 +78,11 @@ export async function handleWhatsAppWebhook(
               // 4. Process with Orchestrator
               const orchestrator = new WhatsAppBookingOrchestrator(env, ctx);
               if (msg.type === "text" && msg.text) {
-                ctx.waitUntil(
-                  orchestrator.handleMessage(msg.from, msg.text.body),
-                );
+                try {
+                  await orchestrator.handleMessage(msg.from, msg.text.body);
+                } catch (err: unknown) {
+                  console.error(`[WhatsAppWebhook] Orchestrator error:`, err);
+                }
               }
             }
           }

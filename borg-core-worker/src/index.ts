@@ -50,6 +50,10 @@ async function routeRequest(
     return new Response("Not Found", { status: 404 });
   }
 
+  if (url.pathname === "/webhook/whatsapp" && whatsappDisabled) {
+    return new Response("WhatsApp Disabled", { status: 503 });
+  }
+
   const middlewares = [];
   if (
     url.pathname.includes("/webhook/") &&
@@ -100,6 +104,22 @@ let frontendBot: Bot<FrontendContext> | null = null;
 let backendBot: Bot<FrontendContext> | null = null;
 const orchestrator = new BookingOrchestrator();
 
+let whatsappDisabled = false;
+
+function validateWhatsAppConfig(env: CoreEnv) {
+  const missing = [];
+  if (!env.WHATSAPP_PHONE_NUMBER_ID) missing.push("WHATSAPP_PHONE_NUMBER_ID");
+  if (!env.WHATSAPP_ACCESS_TOKEN) missing.push("WHATSAPP_ACCESS_TOKEN");
+  if (!env.WHATSAPP_VERIFY_TOKEN) missing.push("WHATSAPP_VERIFY_TOKEN");
+
+  if (missing.length > 0) {
+    console.warn(
+      `[Startup] WhatsApp integration disabled: missing ${missing.join(", ")}`,
+    );
+    whatsappDisabled = true;
+  }
+}
+
 function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
   if (frontendBot) return frontendBot;
   frontendBot = new Bot<FrontendContext>(env.FRONTEND_BOT_TOKEN, {
@@ -135,6 +155,18 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
         parse_mode: "HTML",
         reply_markup: menu,
       });
+
+      await ctx.reply("Selecciona una opción:", {
+        reply_markup: {
+          keyboard: [
+            [{ text: "📋 Panel Admin" }],
+            [{ text: "🤖 IA Features" }],
+            [{ text: "🔔 Notificaciones" }],
+          ],
+          resize_keyboard: true,
+          input_field_placeholder: "Escribe un comando...",
+        },
+      });
     } catch (error) {
       ctx.logger?.error("start_command", `Error in /start: ${error}`);
       await ctx.reply("⚠️ Error al iniciar panel admin.");
@@ -152,6 +184,20 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
           ),
         });
       }
+
+      if (ctx.message?.text === "🤖 IA Features") {
+        return await ctx.reply("🤖 <b>IA Features</b>", {
+          parse_mode: "HTML",
+          reply_markup: await MenuFactory.buildIAFeaturesMenu(
+            ctx.env.BORG_SECRET_KEY,
+          ),
+        });
+      }
+
+      if (ctx.message?.text === "🔔 Notificaciones") {
+        return await ctx.reply("🔔 Módulo de Notificaciones en desarrollo.");
+      }
+
       await handleBackendTextMessage(ctx);
     } catch (error) {
       ctx.logger?.error("message_text", `Error in message:text: ${error}`);
@@ -173,6 +219,28 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
             reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
           });
           break;
+        case "adm_ia":
+          await UiManager.safeEditOrReply(
+            ctx,
+            "🤖 <b>IA Features</b>\n\nSelecciona una opción:",
+            {
+              reply_markup: await MenuFactory.buildIAFeaturesMenu(secret),
+              parse_mode: "HTML",
+            },
+          );
+          break;
+        case "adm_notifs":
+          await UiManager.safeEditOrReply(
+            ctx,
+            "🔔 Módulo de Notificaciones en desarrollo.",
+          );
+          break;
+        case "ia_diag":
+          if (ctx.from) {
+            await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
+            await ctx.reply("✅ Modo Diagnóstico IA Activo");
+          }
+          break;
         case "ia_obd":
           if (ctx.from) {
             await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
@@ -181,6 +249,22 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
           break;
         case "motor_help":
           await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
+          break;
+        case "refresh_cmds":
+          try {
+            await ctx.api.setMyCommands([
+              { command: "start", description: "📋 Panel Admin" },
+              { command: "refresh_cmds", description: "🔄 Refresh Commands" },
+            ]);
+            const fBot = getFrontendBot(ctx.env);
+            await fBot.api.setMyCommands([
+              { command: "start", description: "📅 Agendar Cita" },
+            ]);
+            await ctx.reply("✅ Comandos de bot actualizados.");
+          } catch (e) {
+            ctx.logger?.error("refresh_cmds", `Error: ${e}`);
+            await ctx.reply("⚠️ Error actualizando comandos.");
+          }
           break;
       }
       await ctx.answerCallbackQuery().catch(() => {});
@@ -281,8 +365,9 @@ export default {
     env: CoreEnv,
     executionContext: ExecutionContext,
   ): Promise<Response> {
+    validateWhatsAppConfig(env);
     const ctx: BorgExecutionContext = {
-      traceId: crypto.randomUUID(),
+      traceId: req.headers.get("cf-ray") || crypto.randomUUID(),
       waitUntil: executionContext.waitUntil.bind(executionContext),
     };
     return await routeRequest(req, env, ctx);
@@ -292,14 +377,21 @@ export default {
     env: CoreEnv,
     executionContext: ExecutionContext,
   ) {
+    const nowParts = getVETParts();
+    // Off-peak: 00:00-06:00 VET. Skip 70% of runs.
+    const isOffPeak = nowParts.hour >= 0 && nowParts.hour < 6;
+    if (isOffPeak && Math.random() > 0.3) {
+      return;
+    }
+
     const ctx: BorgExecutionContext = {
       traceId: crypto.randomUUID(),
       waitUntil: executionContext.waitUntil.bind(executionContext),
     };
     const db = env.DB;
-    const now = getVETParts();
-    if (now.minute % 10 === 0) await SeoService.processQueue(db, env);
-    if (now.hour % 6 === 0 && now.minute === 0) {
+
+    if (nowParts.minute % 10 === 0) await SeoService.processQueue(db, env);
+    if (nowParts.hour % 6 === 0 && nowParts.minute === 0) {
       await IaQueueService.processPendingJobs(db, ctx, env);
       await MaintenanceService.runAudits(db, env);
     }
