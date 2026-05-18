@@ -31,17 +31,42 @@ export class WhatsAppBookingOrchestrator {
         "whatsapp",
       );
 
+      const cleanText = text.trim().toLowerCase();
+
+      // Keywords handling
+      if (cleanText === "cancelar") {
+        const result = await this.core.handleAction(
+          session,
+          "conf_booking",
+          "no",
+        );
+        return await this.renderStep(phoneNumber, result.step, result.newState);
+      }
+
+      if (cleanText === "reiniciar" || cleanText === "ayuda") {
+        const result = await this.core.handleAction(
+          session,
+          "start_booking",
+          "0",
+        );
+        return await this.renderStep(phoneNumber, result.step, result.newState);
+      }
+
       if (session.paso_actual > 0) {
-        const selection = parseInt(text.trim(), 10);
-        if (!isNaN(selection)) {
-          const processed = await this.handleSelection(
-            phoneNumber,
-            session,
-            selection,
-          );
-          if (processed) return;
+        // Selection handling (Numeric options)
+        if (session.paso_actual !== 4) {
+          const selection = parseInt(text.trim(), 10);
+          if (!isNaN(selection)) {
+            const processed = await this.handleSelection(
+              phoneNumber,
+              session,
+              selection,
+            );
+            if (processed) return;
+          }
         }
 
+        // Kilometer handling (Step 4)
         if (session.paso_actual === 4) {
           const km = parseInt(text, 10);
           if (!isNaN(km)) {
@@ -62,8 +87,28 @@ export class WhatsAppBookingOrchestrator {
             );
           }
         }
+
+        // If we reach here and we were in an active flow, it means input was invalid
+        const currentStep = await this.core.renderStep(session);
+        let errorMsg =
+          "❌ Opción inválida. Responde con el número de tu elección (1, 2, 3...) o escribe *cancelar* para abortar.";
+
+        if (session.paso_actual === 4) {
+          errorMsg =
+            "❌ Kilometraje inválido. Por favor ingresa solo números (ej: 50000) o escribe *cancelar* para abortar.";
+        }
+
+        return await this.renderStep(
+          phoneNumber,
+          {
+            ...currentStep,
+            message: `${errorMsg}\n\n${currentStep.message}`,
+          },
+          session,
+        );
       }
 
+      // No active session or just started
       const result = await this.core.handleAction(
         session,
         "start_booking",

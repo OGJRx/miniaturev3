@@ -111,6 +111,7 @@ function validateWhatsAppConfig(env: CoreEnv) {
   if (!env.WHATSAPP_PHONE_NUMBER_ID) missing.push("WHATSAPP_PHONE_NUMBER_ID");
   if (!env.WHATSAPP_ACCESS_TOKEN) missing.push("WHATSAPP_ACCESS_TOKEN");
   if (!env.WHATSAPP_VERIFY_TOKEN) missing.push("WHATSAPP_VERIFY_TOKEN");
+  if (!env.WHATSAPP_APP_SECRET) missing.push("WHATSAPP_APP_SECRET");
 
   if (missing.length > 0) {
     console.warn(
@@ -127,6 +128,11 @@ function getFrontendBot(env: CoreEnv): Bot<FrontendContext> {
   });
   setupBotMiddleware(frontendBot, "Telegate-Frontend");
   frontendBot.use(idempotencyMiddleware());
+
+  frontendBot.api
+    .setMyCommands([{ command: "start", description: "📅 Agendar Cita" }])
+    .catch(() => {});
+
   frontendBot.on("message", async (ctx) => orchestrator.handleUpdate(ctx));
   frontendBot.on("callback_query", async (ctx) =>
     orchestrator.handleUpdate(ctx),
@@ -302,7 +308,17 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
       [],
       ctx.env,
     );
-    if (response.success) await UiManager.safeReply(ctx, response.text);
+    if (response.success) {
+      if (response.text.trim()) {
+        await UiManager.safeReply(ctx, response.text);
+      } else {
+        ctx.logger?.warn(
+          "AI_EMPTY_RESPONSE",
+          `Agent ${agentName} returned empty. Prompt length: ${prompt.length}`,
+        );
+        await ctx.reply("⚠️ La IA no generó una respuesta. Intenta reformular.");
+      }
+    }
   } catch (error) {
     ctx.logger?.error(
       "handleBackendTextMessage",
