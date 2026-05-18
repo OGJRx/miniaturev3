@@ -316,7 +316,9 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
           "AI_EMPTY_RESPONSE",
           `Agent ${agentName} returned empty. Prompt length: ${prompt.length}`,
         );
-        await ctx.reply("⚠️ La IA no generó una respuesta. Intenta reformular.");
+        await ctx.reply(
+          "⚠️ La IA no generó una respuesta. Intenta reformular.",
+        );
       }
     }
   } catch (error) {
