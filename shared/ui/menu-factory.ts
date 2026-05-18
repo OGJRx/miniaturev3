@@ -7,9 +7,11 @@ export class MenuFactory {
     return new InlineKeyboard()
       .text("🤖 IA Features", await buildCallback("adm_ia", "0", secret))
       .row()
+      .text("🔔 Notificaciones", await buildCallback("adm_notifs", "0", secret))
+      .row()
       .text(
-        "🔔 Notificaciones",
-        await buildCallback("adm_notifs", "0", secret),
+        "🔄 Actualizar Comandos",
+        await buildCallback("refresh_cmds", "0", secret),
       );
   }
 

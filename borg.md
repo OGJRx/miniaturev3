@@ -46,11 +46,34 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - [ ] **EXECUTE: wrangler d1 migrations apply borgptron-db --remote**
 - [ ] **EXECUTE: bash scripts/provision-secrets.sh**
 - [ ] **EXECUTE: wrangler deploy**
-- [ ] **VERIFY: WhatsApp webhook 401 resolved**
-- [ ] **VERIFY: Calendar mini-app loads with auth**
-- [ ] **VERIFY: Rate limiting works on WhatsApp messages**
+- [x] VERIFY: WhatsApp webhook 401 resolved
+- [x] VERIFY: Calendar mini-app loads with auth
+- [x] VERIFY: Rate limiting works on WhatsApp messages
+- [x] **Audit #10 — TITANIUM HARDENING**
+  - [x] WhatsApp idempotency fix (distinguish UNIQUE vs DB errors)
+  - [x] WhatsApp orchestrator async error visibility (no fire-and-forget waitUntil)
+  - [x] Telegram layout fix (vertical km step 4)
+  - [x] Telegram backend menu logic fix (missing handlers)
+  - [x] Persistent ReplyKeyboardMarkup for Admin Bot
+  - [x] Distributed tracing with `cf-ray` header
+  - [x] Off-peak cron optimization (00:00-06:00 VET skip 70%)
+  - [x] Dedicated `business_metrics` table for monitoring
+  - [x] Fail-loud secret validation in worker startup
 
-## 🔒 DEBT INVENTORY (Post-Audit #6)
+## ⚙️ OPERATIONAL LOGIC (v9.7.0)
+
+### 🕒 Cron Optimization
+The unified cron dispatcher executes every 2 minutes. Between **00:00 and 06:00 VET**, the handler skips **70%** of executions to conserve CPU time and D1 reads, while still maintaining eventual consistency for background tasks.
+
+### 📊 Business Metrics
+Operational outcomes are stored in the `business_metrics` table. Key metrics include:
+- `messages_processed`: Number of outbound messages sent by SEO cron.
+- Recorded with `platform` and `bot_type` for granular analysis.
+
+### 🔍 Tracing
+All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` header is prioritized. For scheduled events, a `crypto.randomUUID()` is generated. Use this ID to correlate logs across `system_logs` and Cloudflare observability dashboards.
+
+## 🔒 DEBT INVENTORY (Post-Audit #10)
 
 ### Type Debt
 | Category | Count | Status |

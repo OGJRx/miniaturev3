@@ -260,7 +260,7 @@ export class BookingOrchestrator {
       k.text(btn.label, btn.callback);
       if (paso === 1 && i % 2 === 1) k.row();
       else if (paso === 7 && i % 3 === 2) k.row();
-      else if ([2, 3, 5, 6, 8].includes(paso) || btn.label === "❓ Ayuda")
+      else if ([2, 3, 4, 5, 6, 8].includes(paso) || btn.label === "❓ Ayuda")
         k.row();
     });
   }
