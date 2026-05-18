@@ -37,6 +37,43 @@ export class SeoService {
     const telegramApi = TelegramApiFactory.create(env, "frontend");
     const whatsappApi = new WhatsAppApi(env, logger);
 
+    const ticketIds = pending.results.map((m) => m.ticket_id);
+    let tickets: Record<
+      string,
+      { servicio_solicitado: string; vehiculo_tipo: string }
+    > = {};
+
+    if (ticketIds.length > 0) {
+      try {
+        const placeholders = ticketIds.map(() => "?").join(",");
+        const results = await db
+          .prepare(
+            `SELECT ticket_id, servicio_solicitado, vehiculo_tipo FROM tickets WHERE ticket_id IN (${placeholders})`,
+          )
+          .bind(...ticketIds)
+          .all<{
+            ticket_id: string;
+            servicio_solicitado: string;
+            vehiculo_tipo: string;
+          }>();
+
+        tickets = Object.fromEntries(
+          results.results.map((t) => [
+            t.ticket_id,
+            {
+              servicio_solicitado: t.servicio_solicitado,
+              vehiculo_tipo: t.vehiculo_tipo,
+            },
+          ]),
+        );
+      } catch (e: unknown) {
+        logger.error(
+          "SEO_TICKET_FETCH",
+          `Error fetching tickets for SEO: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+
     const messagesProcessed = pending.results.length;
     await db
       .prepare(
@@ -48,15 +85,26 @@ export class SeoService {
 
     for (const msg of pending.results) {
       try {
-        const text = `👋 ¡Hola! Esperamos que tu servicio para el ticket ${msg.ticket_id} haya sido excelente. ¿Tienes alguna duda adicional?`;
+        const ticket = tickets[msg.ticket_id];
+        const servicio = ticket?.servicio_solicitado || "servicio";
+        const vehiculo = ticket?.vehiculo_tipo || "vehículo";
 
         if (msg.platform === "telegram") {
-          const htmlText = `👋 <b>¡Hola!</b> Esperamos que tu servicio para el ticket <code>${escapeHtml(msg.ticket_id)}</code> haya sido excelente. ¿Tienes alguna duda adicional?`;
+          const htmlText =
+            `👋 <b>¡Hola!</b> Esperamos que tu ${escapeHtml(servicio)} para tu ${escapeHtml(vehiculo)} haya sido excelente.\n\n` +
+            `Tu ticket fue <code>${escapeHtml(msg.ticket_id)}</code>.\n` +
+            `¿Necesitas agendar tu próximo mantenimiento? ¡Escríbenos!`;
+
           await telegramApi.sendMessage(msg.telegram_chat_id, htmlText, {
             parse_mode: "HTML",
           });
         } else if (msg.platform === "whatsapp") {
-          await whatsappApi.sendMessage(msg.telegram_chat_id, text);
+          const waText =
+            `👋 *¡Hola!* Esperamos que tu ${servicio} para tu ${vehiculo} haya sido excelente.\n\n` +
+            `Tu ticket fue *${msg.ticket_id}*.\n` +
+            `¿Necesitas agendar tu próximo mantenimiento? ¡Escríbenos!`;
+
+          await whatsappApi.sendMessage(msg.telegram_chat_id, waText);
         } else {
           logger.warn(
             "SEO_DISPATCH",

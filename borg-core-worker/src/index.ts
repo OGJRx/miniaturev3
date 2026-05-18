@@ -142,6 +142,13 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
   setupBotMiddleware(backendBot, "Telegate-Backend");
   backendBot.use(idempotencyMiddleware());
 
+  backendBot.api
+    .setMyCommands([
+      { command: "start", description: "📋 Panel Admin" },
+      { command: "refresh_cmds", description: "🔄 Refresh Commands" },
+    ])
+    .catch(() => {});
+
   const ADMIN_PANEL_MESSAGE =
     "🔱 <b>Borg Admin Nexus</b>\n\nPanel de control del Taller Titanium...";
 
@@ -390,7 +397,7 @@ export default {
     };
     const db = env.DB;
 
-    if (nowParts.minute % 10 === 0) await SeoService.processQueue(db, env);
+    await SeoService.processQueue(db, env);
     if (nowParts.hour % 6 === 0 && nowParts.minute === 0) {
       await IaQueueService.processPendingJobs(db, ctx, env);
       await MaintenanceService.runAudits(db, env);

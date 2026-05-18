@@ -57,6 +57,11 @@ export class AdminNotificationService {
   ): Promise<void> {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
+
+    const workerUrl =
+      env.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
+    const dashboardUrl = `${workerUrl}/calendar?token=${env.BORG_SECRET_KEY}`;
+
     const notifBody =
       `🔔 <b>Nueva Cita Confirmada</b>\n\n` +
       `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
@@ -66,7 +71,8 @@ export class AdminNotificationService {
       `📻 <b>Km:</b> ${session.kilometraje ?? "N/A"}\n` +
       `🔧 <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
       `📆 <b>Fecha:</b> ${escapeHtml(session.fecha_cita || "N/A")}\n` +
-      `🕐 <b>Hora:</b> ${escapeHtml(session.hora_cita || "N/A")}`;
+      `🕐 <b>Hora:</b> ${escapeHtml(session.hora_cita || "N/A")}\n\n` +
+      `📊 <b>Dashboard:</b> <a href="${dashboardUrl}">Ver Calendario</a>`;
 
     let successCount = 0;
     for (const adminId of adminIds) {

@@ -181,8 +181,12 @@ export async function parseCallback(
   });
 
   const expected = (await hmacSha256(secret, base)).substring(0, 16);
-  if (!(await timingSafeEqual(sig, expected)))
+  if (!(await timingSafeEqual(sig, expected))) {
+    console.warn(
+      `[parseCallback] HMAC mismatch for action=${action}. Possible key rotation.`,
+    );
     return { action, value, expired: false, valid: false };
+  }
 
   return {
     action,

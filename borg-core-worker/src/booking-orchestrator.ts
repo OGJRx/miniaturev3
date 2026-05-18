@@ -4,6 +4,7 @@ import { buildCallback, parseCallback } from "../../shared/security";
 import { InlineKeyboard } from "grammy";
 import { UiManager } from "../../shared/ui/ui-manager";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
+import { KILOMETRAJE_RANGES } from "../../shared/types/constants";
 import {
   escapeHtml,
   formatHourTo12,
@@ -185,7 +186,7 @@ export class BookingOrchestrator {
       mapsUrl: ctx.env.TALLER_MAPS_URL || "",
     };
 
-    const summary =
+    let summary =
       `✅ <b>¡Cita confirmada!</b>\n\n` +
       `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
       `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
@@ -193,12 +194,14 @@ export class BookingOrchestrator {
       `📟 <b>Kilometraje:</b> ${session.kilometraje ?? "N/A"} km\n` +
       `🛠️ <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
       `🗓️ <b>Fecha:</b> ${escapeHtml(fechaFriendly)}\n` +
-      `⏰ <b>Hora:</b> ${escapeHtml(session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A")}\n\n` +
-      `📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR. Usa el mapa para navegar directamente.`;
+      `⏰ <b>Hora:</b> ${escapeHtml(session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A")}`;
 
     const keyboard = new InlineKeyboard();
     if (loc.mapsUrl) {
+      summary += `\n\n📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR. Usa el mapa para navegar directamente.`;
       keyboard.url("🌐 Ver en Google Maps", loc.mapsUrl);
+    } else if (loc.latitud !== 0 && loc.longitud !== 0) {
+      summary += `\n\n📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR.`;
     }
 
     const summaryPromise = UiManager.safeEditOrReply(ctx, summary, {
@@ -283,7 +286,16 @@ export class BookingOrchestrator {
         return await ctx.reply(
           "❌ Por favor ingresa un número válido para el kilometraje.",
         );
-      const result = await core.handleAction(session, "set_km", String(km));
+
+      const range = KILOMETRAJE_RANGES.reduce((prev, curr) =>
+        Math.abs(curr.value - km) < Math.abs(prev.value - km) ? curr : prev,
+      );
+
+      const result = await core.handleAction(
+        session,
+        "set_km",
+        String(range.value),
+      );
       return await this.renderStep(
         ctx,
         result.step,
