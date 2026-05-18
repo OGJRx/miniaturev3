@@ -26,7 +26,7 @@ migrations_dir = "migrations"
 
 [triggers]
 crons = [
-  "*/2 * * * *"    # Master Cron (Unified Dispatcher)
+  "*/10 * * * *"    # Master Cron (Unified Dispatcher)
 ]
 
 [observability]
