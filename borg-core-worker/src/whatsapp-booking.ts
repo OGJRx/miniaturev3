@@ -46,7 +46,9 @@ export class WhatsAppBookingOrchestrator {
           const km = parseInt(text, 10);
           if (!isNaN(km)) {
             const range = KILOMETRAJE_RANGES.reduce((prev, curr) =>
-              Math.abs(curr.value - km) < Math.abs(prev.value - km) ? curr : prev,
+              Math.abs(curr.value - km) < Math.abs(prev.value - km)
+                ? curr
+                : prev,
             );
             const result = await this.core.handleAction(
               session,
@@ -62,7 +64,11 @@ export class WhatsAppBookingOrchestrator {
         }
       }
 
-      const result = await this.core.handleAction(session, "start_booking", "0");
+      const result = await this.core.handleAction(
+        session,
+        "start_booking",
+        "0",
+      );
       return await this.renderStep(phoneNumber, result.step, result.newState);
     } catch (error) {
       const logger = new BorgLogger(

@@ -168,23 +168,35 @@ export class BookingOrchestrator {
       );
     }
 
-    const notifPromise = AdminNotificationService.dispatch(
-      ctx.env,
-      session,
-      ticketId,
-      "telegram",
+    ctx.executionContext.waitUntil(
+      AdminNotificationService.dispatch(ctx.env, session, ticketId, "telegram"),
     );
-    ctx.executionContext.waitUntil(notifPromise);
 
+    const summary = this.buildSummaryMessage(ctx, session, ticketId);
+    const keyboard = this.buildSummaryKeyboard(ctx.env);
+
+    await UiManager.safeEditOrReply(ctx, summary, {
+      parse_mode: "HTML",
+      ...(keyboard.inline_keyboard.length > 0
+        ? { reply_markup: keyboard }
+        : {}),
+    });
+
+    await this.sendConfirmedLocation(ctx, ctx.env);
+  }
+
+  private buildSummaryMessage(
+    ctx: BorgContext<CoreEnv>,
+    session: EphemeralState,
+    ticketId: string,
+  ): string {
     const fechaFriendly = session.fecha_cita
       ? formatDateFriendly(new Date(session.fecha_cita + "T12:00:00"))
       : "N/A";
 
-    const loc = {
-      latitud: parseFloat(ctx.env.TALLER_LATITUD || "0"),
-      longitud: parseFloat(ctx.env.TALLER_LONGITUD || "0"),
-      mapsUrl: ctx.env.TALLER_MAPS_URL || "",
-    };
+    const mapsUrl = ctx.env.TALLER_MAPS_URL;
+    const lat = parseFloat(ctx.env.TALLER_LATITUD || "0");
+    const lon = parseFloat(ctx.env.TALLER_LONGITUD || "0");
 
     let summary =
       `✅ <b>¡Cita confirmada!</b>\n\n` +
@@ -196,31 +208,34 @@ export class BookingOrchestrator {
       `🗓️ <b>Fecha:</b> ${escapeHtml(fechaFriendly)}\n` +
       `⏰ <b>Hora:</b> ${escapeHtml(session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A")}`;
 
-    const keyboard = new InlineKeyboard();
-    if (loc.mapsUrl) {
+    if (mapsUrl) {
       summary += `\n\n📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR. Usa el mapa para navegar directamente.`;
-      keyboard.url("🌐 Ver en Google Maps", loc.mapsUrl);
-    } else if (loc.latitud !== 0 && loc.longitud !== 0) {
+    } else if (lat !== 0 && lon !== 0) {
       summary += `\n\n📍 <b>¡Aquí nos encontramos!</b> Te esperamos en Autodiagnóstico JR.`;
     }
 
-    const summaryPromise = UiManager.safeEditOrReply(ctx, summary, {
-      parse_mode: "HTML",
-      ...(keyboard.inline_keyboard.length > 0
-        ? { reply_markup: keyboard }
-        : {}),
-    });
-    ctx.executionContext.waitUntil(summaryPromise);
+    return summary;
+  }
 
-    if (loc.latitud !== 0 && loc.longitud !== 0 && ctx.chat) {
-      const locPromise = ctx.api.sendLocation(
-        ctx.chat.id,
-        loc.latitud,
-        loc.longitud,
-      );
+  private buildSummaryKeyboard(env: CoreEnv): InlineKeyboard {
+    const keyboard = new InlineKeyboard();
+    if (env.TALLER_MAPS_URL) {
+      keyboard.url("🌐 Ver en Google Maps", env.TALLER_MAPS_URL);
+    }
+    return keyboard;
+  }
+
+  private async sendConfirmedLocation(
+    ctx: BorgContext<CoreEnv>,
+    env: CoreEnv,
+  ): Promise<void> {
+    const lat = parseFloat(env.TALLER_LATITUD || "0");
+    const lon = parseFloat(env.TALLER_LONGITUD || "0");
+
+    if (lat !== 0 && lon !== 0 && ctx.chat) {
+      const locPromise = ctx.api.sendLocation(ctx.chat.id, lat, lon);
       ctx.executionContext.waitUntil(locPromise);
     }
-    return;
   }
 
   private async buildKeyboardButtons(
