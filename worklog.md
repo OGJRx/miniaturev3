@@ -32,3 +32,22 @@ Stage Summary:
 - Código muerto: 6 métodos MenuFactory eliminados, 2 enum values eliminados, 1 enum comentado
 - Tests: 24/24 pasan post-limpieza
 - Estado: cambios en working directory (unstaged), requieren commit + push + deploy
+
+---
+
+Task ID: 2
+Agent: Jules (Auditor Jefe de Deuda Técnica)
+Task: Migración de Infraestructura (borgptron-db -> borg) + Hardening
+
+Work Log:
+
+- Identificado bug crítico 401: Desincronización de BORG_SECRET_KEY.
+- Hardened `calendarAuthMiddleware` en `shared/security/index.ts` con logging detallado para diagnóstico instantáneo.
+- Creada nueva base de datos D1 `borg` (ID: `f93be66c-cfd1-4f03-a698-57d5938ac156`).
+- Refactorizado repositorio completo: Reemplazadas 8 referencias de `borgptron-db` por `borg`.
+- Actualizado `wrangler.toml` con nuevo `database_id`.
+- Sincronizados Workflows de GitHub Actions para usar la nueva base de datos `borg`.
+- Actualizados `README.md` y `borg.md` con instrucciones de despliegue post-migración.
+- Verificación técnica: El sistema ahora apunta a la nueva infraestructura limpia.
+
+Estado: Listo para commit y ejecución de despliegue por el operador.
