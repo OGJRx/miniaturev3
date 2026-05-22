@@ -5,6 +5,8 @@ import { CoreEnv } from "../types";
 export class MenuFactory {
   static async buildAdminMainMenu(secret: string, _env: CoreEnv) {
     return new InlineKeyboard()
+      .text("📊 Citas", await buildCallback("adm_appts", "0", secret))
+      .row()
       .text("🤖 IA Features", await buildCallback("adm_ia", "0", secret))
       .row()
       .text("🔔 Notificaciones", await buildCallback("adm_notifs", "0", secret))
@@ -15,9 +17,21 @@ export class MenuFactory {
       );
   }
 
+  static async buildAppointmentsMenu(secret: string): Promise<InlineKeyboard> {
+    return new InlineKeyboard()
+      .text("📅 Citas de Hoy", await buildCallback("adm_today", "0", secret))
+      .row()
+      .text(
+        "🔜 Próximas Citas",
+        await buildCallback("adm_upcoming", "0", secret),
+      )
+      .row()
+      .text("🏠 Menú Principal", await buildCallback("adm_main", "0", secret));
+  }
+
   static async buildIAFeaturesMenu(secret: string): Promise<InlineKeyboard> {
     return new InlineKeyboard()
-      .text("🔍 Diagnóstico AI", await buildCallback("ia_diag", "0", secret))
+      .text("🔍 Diagnóstico AI", await buildCallback("ia_ia", "0", secret))
       .row()
       .text("🏠 Menú Principal", await buildCallback("adm_main", "0", secret));
   }

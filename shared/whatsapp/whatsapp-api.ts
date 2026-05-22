@@ -21,7 +21,7 @@ export class WhatsAppApi {
     if (globalMessageCounter >= 10) return false;
     globalMessageCounter++;
 
-    // Per user limit: 3 msg/min
+    // Per user limit: 15 msg/min
     const windowStart = Math.floor(now / 60000);
     const db = this.env.DB;
     try {
@@ -35,7 +35,7 @@ export class WhatsAppApi {
         .bind(to, windowStart, windowStart, windowStart, windowStart)
         .first<{ request_count: number }>();
 
-      if (res && res.request_count > 3) return false;
+      if (res && res.request_count > 15) return false;
     } catch (e) {
       this.logger?.error("whatsapp_api", `Rate limit DB error: ${e}`);
     }
@@ -56,7 +56,10 @@ export class WhatsAppApi {
     }
 
     if (!(await this.checkRateLimit(to))) {
-      this.logger?.warn("whatsapp_api", `Rate limit exceeded for ${to}`);
+      this.logger?.warn(
+        "whatsapp_api",
+        `Rate limit exceeded for ${to}. Counter: ${globalMessageCounter}`,
+      );
       return { error: "Rate limit exceeded" };
     }
 
