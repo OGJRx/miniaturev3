@@ -20,13 +20,17 @@ import { ObdSessionService } from "../../shared/services/obd-session";
 import { MaintenanceService } from "../../shared/services/maintenance-service";
 import { AgentFactory } from "../../shared/services/agent-factory";
 import { AGENT_PROMPTS, MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
+import { ObdLookupService } from "../../shared/obd-lookup";
 import { BookingOrchestrator } from "./booking-orchestrator";
 import { handleApiAppointments } from "./routes/appointments";
 import { handleWhatsAppWebhook } from "./routes/webhook-whatsapp";
 import { SeoService } from "../../shared/services/seo-service";
 import { IaQueueService } from "../../shared/services/ia-queue";
 import { timingSafeEqual, hmacSha256 } from "../../shared/security/crypto";
-import { getVenezuelaTimeParts as getVETParts } from "../../shared/ui/timezone";
+import {
+  getVenezuelaTimeParts as getVETParts,
+  todayVET,
+} from "../../shared/ui/timezone";
 import { CALENDAR_HTML } from "./calendar-template";
 
 type FrontendContext = BorgContext<CoreEnv>;
@@ -230,14 +234,93 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
         case "adm_main":
           await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
             reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
+            parse_mode: "HTML",
           });
           break;
+        case "adm_appts":
+          await UiManager.safeEditOrReply(
+            ctx,
+            "📊 <b>Gestión de Citas</b>\n\nSelecciona una vista:",
+            {
+              reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+              parse_mode: "HTML",
+            },
+          );
+          break;
+        case "adm_today": {
+          const today = todayVET();
+          const results = await ctx.env.DB.prepare(
+            "SELECT ticket_id, hora_cita, vehiculo_tipo, servicio_solicitado, estado FROM tickets WHERE fecha_cita = ? AND estado != 'cancelado' ORDER BY hora_cita ASC",
+          )
+            .bind(today)
+            .all<{
+              ticket_id: string;
+              hora_cita: string;
+              vehiculo_tipo: string;
+              servicio_solicitado: string;
+              estado: string;
+            }>();
+
+          let msg = `📊 <b>Citas de Hoy — ${today}</b>\n\n`;
+          if (!results.results || results.results.length === 0) {
+            msg += "📭 No hay citas para hoy.";
+          } else {
+            results.results.forEach((r, i) => {
+              const statusEmoji = r.estado === "pendiente" ? "⏳" : "✅";
+              msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.hora_cita} | ${r.vehiculo_tipo} | ${r.servicio_solicitado} | ${statusEmoji} ${r.estado}\n`;
+            });
+            msg += `\nTotal: ${results.results.length} cita(s)`;
+          }
+          await UiManager.safeEditOrReply(ctx, msg, {
+            parse_mode: "HTML",
+            reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+          });
+          break;
+        }
+        case "adm_upcoming": {
+          const today = todayVET();
+          const results = await ctx.env.DB.prepare(
+            "SELECT ticket_id, fecha_cita, hora_cita, vehiculo_tipo, estado FROM tickets WHERE fecha_cita >= ? AND estado = 'pendiente' ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 10",
+          )
+            .bind(today)
+            .all<{
+              ticket_id: string;
+              fecha_cita: string;
+              hora_cita: string;
+              vehiculo_tipo: string;
+              estado: string;
+            }>();
+
+          let msg = `🔜 <b>Próximas 10 Citas Pendientes</b>\n\n`;
+          if (!results.results || results.results.length === 0) {
+            msg += "📭 No hay citas pendientes próximamente.";
+          } else {
+            results.results.forEach((r, i) => {
+              msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.fecha_cita} ${r.hora_cita} | ${r.vehiculo_tipo}\n`;
+            });
+          }
+          await UiManager.safeEditOrReply(ctx, msg, {
+            parse_mode: "HTML",
+            reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+          });
+          break;
+        }
         case "adm_ia":
           await UiManager.safeEditOrReply(
             ctx,
             "🤖 <b>IA Features</b>\n\nSelecciona una opción:",
             {
               reply_markup: await MenuFactory.buildIAFeaturesMenu(secret),
+              parse_mode: "HTML",
+            },
+          );
+          break;
+        case "ia_ia":
+          await UiManager.safeEditOrReply(
+            ctx,
+            "🔍 <b>Diagnóstico AI</b>\n\nActiva el modo de diagnóstico para interpretar síntomas o códigos:",
+            {
+              reply_markup: await MenuFactory.buildDiagnosticMenu(secret),
               parse_mode: "HTML",
             },
           );
@@ -297,9 +380,17 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
     const text = ctx.message?.text || "";
     const obdActive = await ObdSessionService.isActive(ctx.env.DB, adminId);
     const agentName = obdActive ? "OBD_DIAGNOSTICO" : "CEREBRO";
-    const prompt = obdActive
+    let prompt = obdActive
       ? AGENT_PROMPTS.OBD_DIAGNOSTICO
       : AGENT_PROMPTS.CEREBRO_ADMINISTRATIVO;
+
+    if (obdActive) {
+      const results = await ObdLookupService.getEnrichmentResults(
+        ctx.env.DB,
+        text,
+      );
+      prompt = ObdLookupService.enrichPrompt(prompt, results);
+    }
 
     const response = await AgentFactory.runAgent(
       agentName,

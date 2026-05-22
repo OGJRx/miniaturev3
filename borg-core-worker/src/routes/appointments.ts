@@ -11,16 +11,34 @@ export interface AppointmentRow {
 }
 
 export async function handleApiAppointments(
-  _req: Request,
+  req: Request,
   env: CoreEnv,
   _ctx: BorgExecutionContext,
 ): Promise<Response> {
   try {
-    const appointments = await env.DB.prepare(
+    const url = new URL(req.url);
+    const status = url.searchParams.get("status");
+    const date = url.searchParams.get("date");
+
+    let query =
       "SELECT ticket_id, vehiculo_tipo, servicio_solicitado, fecha_cita, hora_cita, estado " +
-        "FROM tickets WHERE estado != 'cancelado' " +
-        "ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 200",
-    ).all<AppointmentRow>();
+      "FROM tickets WHERE estado != 'cancelado'";
+    const bindings: string[] = [];
+
+    if (status) {
+      query += " AND estado = ?";
+      bindings.push(status);
+    }
+    if (date) {
+      query += " AND fecha_cita = ?";
+      bindings.push(date);
+    }
+
+    query += " ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 200";
+
+    const appointments = await env.DB.prepare(query)
+      .bind(...bindings)
+      .all<AppointmentRow>();
 
     return ResponseHelper.json(appointments.results);
   } catch (e: unknown) {

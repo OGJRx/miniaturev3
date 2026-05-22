@@ -64,6 +64,9 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
         .bg-red-900\\/20 { background-color: rgba(127, 29, 29, 0.2); }
         .border-red-500 { border-color: #ef4444; }
         .p-4 { padding: 1rem; }
+        .filter-select { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.5rem; border-radius: 0.5rem; }
+        .summary-badge { background: #1e293b; border: 1px solid #334155; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.875rem; }
+        .mr-2 { margin-right: 0.5rem; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -73,10 +76,27 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
                 <h1 class="text-3xl font-bold text-blue-400">🔱 Titanium Core</h1>
                 <p class="text-slate-400">Panel de Control de Citas</p>
             </div>
-            <button onclick="fetchAppointments()" class="bg-blue-600 text-white px-4 py-2 rounded-lg transition">
-                Actualizar
-            </button>
+            <div class="flex gap-2">
+                <button onclick="exportCSV()" class="bg-slate-700 text-white px-4 py-2 rounded-lg transition hover:bg-slate-600">
+                    Exportar
+                </button>
+                <button onclick="fetchAppointments()" class="bg-blue-600 text-white px-4 py-2 rounded-lg transition">
+                    Actualizar
+                </button>
+            </div>
         </header>
+
+        <div class="flex flex-wrap gap-4 mb-6 items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+            <div id="summary-container" class="flex gap-2">
+                <!-- Summary Badges -->
+            </div>
+            <div class="flex-grow"></div>
+            <select id="status-filter" class="filter-select" onchange="fetchAppointments()">
+                <option value="">Todos los estados</option>
+                <option value="pendiente">Pendientes</option>
+                <option value="confirmado">Confirmados</option>
+            </select>
+        </div>
 
         <div id="appointments-container" class="space-y-4">
             <div class="flex justify-center py-12">
@@ -86,13 +106,42 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
     </div>
 
     <script nonce="__NONCE__">
+        let currentData = [];
         function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+        function updateSummary(data) {
+            const summary = document.getElementById('summary-container');
+            const total = data.length;
+            const pending = data.filter(a => a.estado === 'pendiente').length;
+            const confirmed = data.filter(a => a.estado === 'confirmado').length;
+
+            summary.innerHTML = '<div class="summary-badge"><span class="text-slate-400 mr-2">Total:</span>' + total + '</div>' +
+                                '<div class="summary-badge"><span class="text-yellow-500 mr-2">⏳</span>' + pending + '</div>' +
+                                '<div class="summary-badge"><span class="text-green-500 mr-2">✅</span>' + confirmed + '</div>';
+        }
+
+        async function exportCSV() {
+            if (currentData.length === 0) return;
+            const headers = ['Ticket ID', 'Fecha', 'Hora', 'Vehiculo', 'Servicio', 'Estado'];
+            const rows = currentData.map(a => [a.ticket_id, a.fecha_cita, a.hora_cita, a.vehiculo_tipo, a.servicio_solicitado, a.estado]);
+            const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'citas-titanium.csv';
+            a.click();
+        }
+
         async function fetchAppointments() {
             const container = document.getElementById('appointments-container');
+            const status = document.getElementById('status-filter').value;
             try {
-                const res = await fetch('/api/appointments');
+                const res = await fetch('/api/appointments' + (status ? '?status=' + status : ''));
                 if (!res.ok) throw new Error('No autorizado');
                 const data = await res.json();
+                currentData = data;
+                updateSummary(data);
 
                 if (data.length === 0) {
                     container.innerHTML = '<div class="text-center py-12 text-slate-500 italic">No hay citas programadas</div>';

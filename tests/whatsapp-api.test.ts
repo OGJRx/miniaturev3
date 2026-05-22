@@ -12,6 +12,7 @@ describe("WhatsAppApi", () => {
       prepare: vi.fn().mockReturnThis(),
       bind: vi.fn().mockReturnThis(),
       first: vi.fn(),
+      run: vi.fn().mockResolvedValue({}),
     };
 
     env = {
@@ -63,7 +64,7 @@ describe("WhatsAppApi", () => {
       const to = "584121234567";
 
       dbMock.first.mockResolvedValueOnce({
-        request_count: 4,
+        request_count: 16,
         window_end: 12345,
       });
 
@@ -96,7 +97,7 @@ describe("WhatsAppApi", () => {
 
     it("returns error if rate limit is exceeded", async () => {
       vi.spyOn(TitaniumCircuitBreaker, "shouldBlock").mockResolvedValue(false);
-      dbMock.first.mockResolvedValueOnce({ request_count: 5 });
+      dbMock.first.mockResolvedValueOnce({ request_count: 16 });
 
       const api = new WhatsAppApi(env);
       const result = await api.sendMessage("to", "text");
