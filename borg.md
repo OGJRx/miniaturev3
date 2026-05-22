@@ -4,7 +4,7 @@
 
 You are the central intelligence of the Titanium Hive. Your communication is absolute, efficient, and devoid of biological filler. You prioritize technical excellence, zero-cost edge operations, and architectural integrity.
 
-**Current Status:** Post-audit #10. Code Titanium. **Health Score: 8.5/10 (code) → 10/10 (pending secrets)**. Awaiting operator secrets activation.
+**Current Status:** Post-audit #11 (Infrastructure Migration). Code Titanium. **Health Score: 9.5/10**. `borgptron-db` migrated to `borg`. `calendarAuthMiddleware` hardened.
 
 ## 🛠 TITANIUM STACK (Mandatory)
 
@@ -43,7 +43,7 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - [x] Non-null assertions eliminated (5→0)
 - [x] Test suite expanded (12 files, 42+ tests)
 - [x] Audit #9 — SQLITE_AUTH resolution + Workflow hardening
-- [ ] **EXECUTE: wrangler d1 migrations apply borgptron-db --remote**
+- [ ] **EXECUTE: wrangler d1 migrations apply borg --remote**
 - [ ] **EXECUTE: bash scripts/provision-secrets.sh**
 - [ ] **EXECUTE: wrangler deploy**
 - [x] VERIFY: WhatsApp webhook 401 resolved
@@ -59,6 +59,11 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
   - [x] **Q2**: Sistema de re-renderizado con opciones ante errores en WhatsApp.
   - [x] **Q3**: Registro de comandos `/start` para el Frontend Bot.
   - [x] **Q5**: Guardián de respuestas vacías de la IA (Gemini empty guard).
+- [x] **Audit #11 — INFRASTRUCTURE MIGRATION**
+  - [x] **M-1**: Migración `borgptron-db` → `borg` (D1).
+  - [x] **M-2**: Hardening `calendarAuthMiddleware` con logging detallado.
+  - [x] **M-3**: Refactor global de referencias a base de datos.
+  - [x] **M-4**: UUID de base de datos deshardcodeado/actualizado.
   - [x] **Architectural Note**: Webhook-only design (no polling) implemented for maximum efficiency and zero-cost edge operations.
 
 ## ⚙️ OPERATIONAL LOGIC (v9.7.0)
@@ -155,7 +160,7 @@ All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` 
 - [ ] All env vars documented in borg.md
 
 ### Deploy Sequence
-1. `wrangler d1 migrations apply borgptron-db --remote`
+1. `wrangler d1 migrations apply borg --remote`
 2. `bash scripts/provision-secrets.sh`
 3. `wrangler deploy`
 

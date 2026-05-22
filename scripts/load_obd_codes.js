@@ -153,8 +153,8 @@ for (let i = 0; i < codes.length; i += BATCH_SIZE) {
 console.log(`🎁 Generated ${batchCount} SQL batch files in ${OUTPUT_DIR}/`);
 console.log("\n💡 Next steps:");
 console.log(
-  `1. Run migration 0079: wrangler d1 execute borgptron-db --remote --file=./borg-core-worker/migrations/0079_purge_and_obd_integration.sql`,
+  `1. Run migration 0079: wrangler d1 execute borg --remote --file=./borg-core-worker/migrations/0079_purge_and_obd_integration.sql`,
 );
 console.log(
-  `2. Load data: for f in ${OUTPUT_DIR}/*.sql; do wrangler d1 execute borgptron-db --remote --file="$f"; done`,
+  `2. Load data: for f in ${OUTPUT_DIR}/*.sql; do wrangler d1 execute borg --remote --file="$f"; done`,
 );

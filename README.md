@@ -37,7 +37,7 @@ npm run test
 ./scripts/sync-webhooks.sh
 
 # Aplicar migraciones D1 al entorno remoto
-wrangler d1 migrations apply borgptron-db --remote
+wrangler d1 migrations apply borg --remote
 
 # Rotación de secretos de seguridad
 ./scripts/rotate-borg-secret.sh

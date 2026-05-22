@@ -20,8 +20,8 @@ WHATSAPP_API_VERSION = "v25.0"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "borgptron-db"
-database_id = "80185899-29c6-4888-9265-64c3dc49ba2f"
+database_name = "borg"
+database_id = "f93be66c-cfd1-4f03-a698-57d5938ac156"
 migrations_dir = "migrations"
 
 [triggers]

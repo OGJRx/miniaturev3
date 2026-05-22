@@ -23,8 +23,12 @@ export const calendarAuthMiddleware: BorgMiddleware = async (request, env) => {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
 
-  if (token && (await timingSafeEqual(token, env.BORG_SECRET_KEY))) {
-    return null;
+  if (token) {
+    if (await timingSafeEqual(token, env.BORG_SECRET_KEY)) {
+      return null;
+    } else {
+      console.warn(`[calendarAuth] Token mismatch. Check BORG_SECRET_KEY.`);
+    }
   }
 
   const cookieHeader = request.headers.get("Cookie");
@@ -34,8 +38,13 @@ export const calendarAuthMiddleware: BorgMiddleware = async (request, env) => {
     );
     const session = cookies["borg_session"];
     if (session) {
-      const [payload, sig] = session.split(".");
-      if (payload && sig) {
+      const parts = session.split(".");
+      const payload = parts[0];
+      const sig = parts[1];
+
+      if (parts.length !== 2 || !payload || !sig) {
+        console.warn(`[calendarAuth] Invalid session format.`);
+      } else {
         const expectedSig = (
           await hmacSha256(env.BORG_SECRET_KEY, payload)
         ).substring(0, 32);
@@ -44,7 +53,13 @@ export const calendarAuthMiddleware: BorgMiddleware = async (request, env) => {
           const now = Math.floor(Date.now() / 1000);
           if (now - ts < 86400) {
             return null;
+          } else {
+            console.warn(`[calendarAuth] Session expired.`);
           }
+        } else {
+          console.warn(
+            `[calendarAuth] Session signature mismatch. Possible BORG_SECRET_KEY rotation.`,
+          );
         }
       }
     }
