@@ -224,146 +224,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
 
   backendBot.on("callback_query:data", async (ctx) => {
     try {
-      const parsed = await parseCallback(
-        ctx.callbackQuery?.data || "",
-        ctx.env.BORG_SECRET_KEY,
-      );
-      if (!parsed?.valid) return ctx.answerCallbackQuery("⚠️ Invalido");
-      const secret = ctx.env.BORG_SECRET_KEY;
-      switch (parsed.action) {
-        case "adm_main":
-          await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
-            reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
-            parse_mode: "HTML",
-          });
-          break;
-        case "adm_appts":
-          await UiManager.safeEditOrReply(
-            ctx,
-            "📊 <b>Gestión de Citas</b>\n\nSelecciona una vista:",
-            {
-              reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
-              parse_mode: "HTML",
-            },
-          );
-          break;
-        case "adm_today": {
-          const today = todayVET();
-          const results = await ctx.env.DB.prepare(
-            "SELECT ticket_id, hora_cita, vehiculo_tipo, servicio_solicitado, estado FROM tickets WHERE fecha_cita = ? AND estado != 'cancelado' ORDER BY hora_cita ASC",
-          )
-            .bind(today)
-            .all<{
-              ticket_id: string;
-              hora_cita: string;
-              vehiculo_tipo: string;
-              servicio_solicitado: string;
-              estado: string;
-            }>();
-
-          let msg = `📊 <b>Citas de Hoy — ${today}</b>\n\n`;
-          if (!results.results || results.results.length === 0) {
-            msg += "📭 No hay citas para hoy.";
-          } else {
-            results.results.forEach((r, i) => {
-              const statusEmoji = r.estado === "pendiente" ? "⏳" : "✅";
-              msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.hora_cita} | ${r.vehiculo_tipo} | ${r.servicio_solicitado} | ${statusEmoji} ${r.estado}\n`;
-            });
-            msg += `\nTotal: ${results.results.length} cita(s)`;
-          }
-          await UiManager.safeEditOrReply(ctx, msg, {
-            parse_mode: "HTML",
-            reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
-          });
-          break;
-        }
-        case "adm_upcoming": {
-          const today = todayVET();
-          const results = await ctx.env.DB.prepare(
-            "SELECT ticket_id, fecha_cita, hora_cita, vehiculo_tipo, estado FROM tickets WHERE fecha_cita >= ? AND estado = 'pendiente' ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 10",
-          )
-            .bind(today)
-            .all<{
-              ticket_id: string;
-              fecha_cita: string;
-              hora_cita: string;
-              vehiculo_tipo: string;
-              estado: string;
-            }>();
-
-          let msg = `🔜 <b>Próximas 10 Citas Pendientes</b>\n\n`;
-          if (!results.results || results.results.length === 0) {
-            msg += "📭 No hay citas pendientes próximamente.";
-          } else {
-            results.results.forEach((r, i) => {
-              msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.fecha_cita} ${r.hora_cita} | ${r.vehiculo_tipo}\n`;
-            });
-          }
-          await UiManager.safeEditOrReply(ctx, msg, {
-            parse_mode: "HTML",
-            reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
-          });
-          break;
-        }
-        case "adm_ia":
-          await UiManager.safeEditOrReply(
-            ctx,
-            "🤖 <b>IA Features</b>\n\nSelecciona una opción:",
-            {
-              reply_markup: await MenuFactory.buildIAFeaturesMenu(secret),
-              parse_mode: "HTML",
-            },
-          );
-          break;
-        case "ia_ia":
-          await UiManager.safeEditOrReply(
-            ctx,
-            "🔍 <b>Diagnóstico AI</b>\n\nActiva el modo de diagnóstico para interpretar síntomas o códigos:",
-            {
-              reply_markup: await MenuFactory.buildDiagnosticMenu(secret),
-              parse_mode: "HTML",
-            },
-          );
-          break;
-        case "adm_notifs":
-          await UiManager.safeEditOrReply(
-            ctx,
-            "🔔 Módulo de Notificaciones en desarrollo.",
-          );
-          break;
-        case "ia_diag":
-          if (ctx.from) {
-            await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
-            await ctx.reply("✅ Modo Diagnóstico IA Activo");
-          }
-          break;
-        case "ia_obd":
-          if (ctx.from) {
-            await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
-            await ctx.reply("✅ Modo OBD-II Activo");
-          }
-          break;
-        case "motor_help":
-          await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
-          break;
-        case "refresh_cmds":
-          try {
-            await ctx.api.setMyCommands([
-              { command: "start", description: "📋 Panel Admin" },
-              { command: "refresh_cmds", description: "🔄 Refresh Commands" },
-            ]);
-            const fBot = getFrontendBot(ctx.env);
-            await fBot.api.setMyCommands([
-              { command: "start", description: "📅 Agendar Cita" },
-            ]);
-            await ctx.reply("✅ Comandos de bot actualizados.");
-          } catch (e) {
-            ctx.logger?.error("refresh_cmds", `Error: ${e}`);
-            await ctx.reply("⚠️ Error actualizando comandos.");
-          }
-          break;
-      }
-      await ctx.answerCallbackQuery().catch(() => {});
+      await handleBackendCallbackQuery(ctx);
     } catch (error) {
       ctx.logger?.error("callback_query", `Error in callback_query: ${error}`);
       await ctx.answerCallbackQuery("⚠️ Error interno").catch(() => {});
@@ -371,6 +232,184 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
   });
 
   return backendBot;
+}
+
+async function handleBackendCallbackQuery(ctx: FrontendContext) {
+  const parsed = await parseCallback(
+    ctx.callbackQuery?.data || "",
+    ctx.env.BORG_SECRET_KEY,
+  );
+  if (!parsed?.valid) return ctx.answerCallbackQuery("⚠️ Invalido");
+  const secret = ctx.env.BORG_SECRET_KEY;
+
+  if (parsed.action.startsWith("adm_")) {
+    return handleAdminActions(ctx, parsed.action, secret);
+  }
+
+  if (parsed.action.startsWith("ia_")) {
+    return handleIAActions(ctx, parsed.action, secret);
+  }
+
+  switch (parsed.action) {
+    case "motor_help":
+      await ctx.reply(MOTOR_HELP_MESSAGE, { parse_mode: "HTML" });
+      break;
+    case "refresh_cmds":
+      await handleRefreshCmds(ctx);
+      break;
+  }
+  await ctx.answerCallbackQuery().catch(() => {});
+}
+
+async function handleAdminActions(
+  ctx: FrontendContext,
+  action: string,
+  secret: string,
+) {
+  switch (action) {
+    case "adm_main":
+      await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
+        reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
+        parse_mode: "HTML",
+      });
+      break;
+    case "adm_appts":
+      await UiManager.safeEditOrReply(
+        ctx,
+        "📊 <b>Gestión de Citas</b>\n\nSelecciona una vista:",
+        {
+          reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+          parse_mode: "HTML",
+        },
+      );
+      break;
+    case "adm_today":
+      await handleAdminToday(ctx, secret);
+      break;
+    case "adm_upcoming":
+      await handleAdminUpcoming(ctx, secret);
+      break;
+    case "adm_ia":
+      await UiManager.safeEditOrReply(
+        ctx,
+        "🤖 <b>IA Features</b>\n\nSelecciona una opción:",
+        {
+          reply_markup: await MenuFactory.buildIAFeaturesMenu(secret),
+          parse_mode: "HTML",
+        },
+      );
+      break;
+    case "adm_notifs":
+      await UiManager.safeEditOrReply(
+        ctx,
+        "🔔 Módulo de Notificaciones en desarrollo.",
+      );
+      break;
+  }
+  await ctx.answerCallbackQuery().catch(() => {});
+}
+
+async function handleIAActions(
+  ctx: FrontendContext,
+  action: string,
+  secret: string,
+) {
+  switch (action) {
+    case "ia_ia":
+      await UiManager.safeEditOrReply(
+        ctx,
+        "🔍 <b>Diagnóstico AI</b>\n\nActiva el modo de diagnóstico para interpretar síntomas o códigos:",
+        {
+          reply_markup: await MenuFactory.buildDiagnosticMenu(secret),
+          parse_mode: "HTML",
+        },
+      );
+      break;
+    case "ia_diag":
+    case "ia_obd":
+      if (ctx.from) {
+        await ObdSessionService.activate(ctx.env.DB, ctx.from.id);
+        const modeText = action === "ia_diag" ? "Diagnóstico IA" : "OBD-II";
+        await ctx.reply(`✅ Modo ${modeText} Activo`);
+      }
+      break;
+  }
+  await ctx.answerCallbackQuery().catch(() => {});
+}
+
+async function handleAdminToday(ctx: FrontendContext, secret: string) {
+  const today = todayVET();
+  const results = await ctx.env.DB.prepare(
+    "SELECT ticket_id, hora_cita, vehiculo_tipo, servicio_solicitado, estado FROM tickets WHERE fecha_cita = ? AND estado != 'cancelado' ORDER BY hora_cita ASC",
+  )
+    .bind(today)
+    .all<{
+      ticket_id: string;
+      hora_cita: string;
+      vehiculo_tipo: string;
+      servicio_solicitado: string;
+      estado: string;
+    }>();
+
+  let msg = `📊 <b>Citas de Hoy — ${today}</b>\n\n`;
+  if (!results.results || results.results.length === 0) {
+    msg += "📭 No hay citas para hoy.";
+  } else {
+    results.results.forEach((r, i) => {
+      const statusEmoji = r.estado === "pendiente" ? "⏳" : "✅";
+      msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.hora_cita} | ${r.vehiculo_tipo} | ${r.servicio_solicitado} | ${statusEmoji} ${r.estado}\n`;
+    });
+    msg += `\nTotal: ${results.results.length} cita(s)`;
+  }
+  await UiManager.safeEditOrReply(ctx, msg, {
+    parse_mode: "HTML",
+    reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+  });
+}
+
+async function handleAdminUpcoming(ctx: FrontendContext, secret: string) {
+  const today = todayVET();
+  const results = await ctx.env.DB.prepare(
+    "SELECT ticket_id, fecha_cita, hora_cita, vehiculo_tipo, estado FROM tickets WHERE fecha_cita >= ? AND estado = 'pendiente' ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 10",
+  )
+    .bind(today)
+    .all<{
+      ticket_id: string;
+      fecha_cita: string;
+      hora_cita: string;
+      vehiculo_tipo: string;
+      estado: string;
+    }>();
+
+  let msg = `🔜 <b>Próximas 10 Citas Pendientes</b>\n\n`;
+  if (!results.results || results.results.length === 0) {
+    msg += "📭 No hay citas pendientes próximamente.";
+  } else {
+    results.results.forEach((r, i) => {
+      msg += `${i + 1}. <code>${r.ticket_id}</code> | ${r.fecha_cita} ${r.hora_cita} | ${r.vehiculo_tipo}\n`;
+    });
+  }
+  await UiManager.safeEditOrReply(ctx, msg, {
+    parse_mode: "HTML",
+    reply_markup: await MenuFactory.buildAppointmentsMenu(secret),
+  });
+}
+
+async function handleRefreshCmds(ctx: FrontendContext) {
+  try {
+    await ctx.api.setMyCommands([
+      { command: "start", description: "📋 Panel Admin" },
+      { command: "refresh_cmds", description: "🔄 Refresh Commands" },
+    ]);
+    const fBot = getFrontendBot(ctx.env);
+    await fBot.api.setMyCommands([
+      { command: "start", description: "📅 Agendar Cita" },
+    ]);
+    await ctx.reply("✅ Comandos de bot actualizados.");
+  } catch (e) {
+    ctx.logger?.error("refresh_cmds", `Error: ${e}`);
+    await ctx.reply("⚠️ Error actualizando comandos.");
+  }
 }
 
 async function handleBackendTextMessage(ctx: FrontendContext) {

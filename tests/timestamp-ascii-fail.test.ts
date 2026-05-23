@@ -21,10 +21,10 @@ describe("Titanium Timestamp Integrity Audit", () => {
   });
 
   it("verifica que toSqliteDateTime elimina la falacia ASCII", () => {
-     // Si ambas usan el mismo separador (espacio), la comparación lexicográfica es válida para ISO-like strings
-     const date1 = "2026-05-23 10:00:00";
-     const date2 = "2026-05-23 16:50:47";
+    // Si ambas usan el mismo separador (espacio), la comparación lexicográfica es válida para ISO-like strings
+    const date1 = "2026-05-23 10:00:00";
+    const date2 = "2026-05-23 16:50:47";
 
-     expect(date1 > date2).toBe(false); // 10:00 < 16:50 - CORRECTO
+    expect(date1 > date2).toBe(false); // 10:00 < 16:50 - CORRECTO
   });
 });

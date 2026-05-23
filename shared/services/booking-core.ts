@@ -7,7 +7,11 @@ import {
   KILOMETRAJE_RANGES,
   SERVICE_OPTIONS,
 } from "../types/constants";
-import { formatDateISO, formatDateFriendly, toSqliteDateTime } from "../ui/formatters";
+import {
+  formatDateISO,
+  formatDateFriendly,
+  toSqliteDateTime,
+} from "../ui/formatters";
 import { getVenezuelaNow } from "../ui/timezone";
 
 export interface BookingStep {

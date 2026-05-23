@@ -48,10 +48,7 @@ import { SqliteDateTime } from "../types";
  * Format: YYYY-MM-DD HH:mm:ss
  */
 export const toSqliteDateTime = (date: Date): SqliteDateTime => {
-  return date
-    .toISOString()
-    .replace("T", " ")
-    .split(".")[0] as SqliteDateTime;
+  return date.toISOString().replace("T", " ").split(".")[0] as SqliteDateTime;
 };
 
 export const formatDateFriendly = (d: Date): string => {
