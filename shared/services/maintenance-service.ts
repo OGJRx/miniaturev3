@@ -31,12 +31,12 @@ export class MaintenanceService {
       .run();
 
     await db
-      .prepare("DELETE FROM processed_updates WHERE created_at < ?")
+      .prepare("DELETE FROM processed_updates WHERE processed_at < ?")
       .bind(new Date(Date.now() - retentionUpdates * 3600 * 1000).toISOString())
       .run();
 
     await db
-      .prepare("DELETE FROM processed_wa_messages WHERE created_at < ?")
+      .prepare("DELETE FROM processed_wa_messages WHERE processed_at < ?")
       .bind(new Date(Date.now() - retentionUpdates * 3600 * 1000).toISOString())
       .run();
 
