@@ -26,10 +26,10 @@ export class ObdSessionService {
   static async isActive(db: D1Database, adminId: number): Promise<boolean> {
     const res = await db
       .prepare(
-        "SELECT 1 as exists FROM obd_sessions WHERE admin_id = ? AND expires_at > CURRENT_TIMESTAMP",
+        "SELECT 1 as found FROM obd_sessions WHERE admin_id = ? AND expires_at > CURRENT_TIMESTAMP",
       )
       .bind(adminId)
-      .first<{ exists: number }>();
+      .first<{ found: number }>();
     return res !== null;
   }
 }
