@@ -1,5 +1,6 @@
 import { D1Database } from "@cloudflare/workers-types";
 import { CoreEnv } from "../types";
+import { toSqliteDateTime } from "../ui/formatters";
 
 export class MaintenanceService {
   static async runAudits(db: D1Database, env: CoreEnv) {
@@ -7,11 +8,11 @@ export class MaintenanceService {
       .prepare(
         "UPDATE circuit_breakers SET status = 'closed', opened_at = NULL WHERE status = 'open' AND opened_at < ?",
       )
-      .bind(new Date(Date.now() - 3600000).toISOString())
+      .bind(toSqliteDateTime(new Date(Date.now() - 3600000)))
       .run();
 
     await db
-      .prepare("DELETE FROM sessions WHERE expires_at < CURRENT_TIMESTAMP")
+      .prepare("DELETE FROM sessions WHERE expires_at < datetime('now')")
       .run();
 
     await db
@@ -26,23 +27,31 @@ export class MaintenanceService {
     await db
       .prepare("DELETE FROM system_logs WHERE created_at < ?")
       .bind(
-        new Date(Date.now() - retentionLogs * 24 * 3600 * 1000).toISOString(),
+        toSqliteDateTime(
+          new Date(Date.now() - retentionLogs * 24 * 3600 * 1000),
+        ),
       )
       .run();
 
     await db
       .prepare("DELETE FROM processed_updates WHERE processed_at < ?")
-      .bind(new Date(Date.now() - retentionUpdates * 3600 * 1000).toISOString())
+      .bind(
+        toSqliteDateTime(new Date(Date.now() - retentionUpdates * 3600 * 1000)),
+      )
       .run();
 
     await db
       .prepare("DELETE FROM processed_wa_messages WHERE processed_at < ?")
-      .bind(new Date(Date.now() - retentionUpdates * 3600 * 1000).toISOString())
+      .bind(
+        toSqliteDateTime(new Date(Date.now() - retentionUpdates * 3600 * 1000)),
+      )
       .run();
 
     await db
       .prepare("DELETE FROM whatsapp_messages WHERE created_at < ?")
-      .bind(new Date(Date.now() - retentionWA * 24 * 3600 * 1000).toISOString())
+      .bind(
+        toSqliteDateTime(new Date(Date.now() - retentionWA * 24 * 3600 * 1000)),
+      )
       .run();
   }
 }

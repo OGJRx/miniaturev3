@@ -41,6 +41,15 @@ const MES_ANIO = [
 ] as const;
 
 import { getVenezuelaTimeParts } from "./timezone";
+import { SqliteDateTime } from "../types";
+
+/**
+ * Converts a Date object to a SQLite-compatible date-time string in UTC.
+ * Format: YYYY-MM-DD HH:mm:ss
+ */
+export const toSqliteDateTime = (date: Date): SqliteDateTime => {
+  return date.toISOString().replace("T", " ").split(".")[0] as SqliteDateTime;
+};
 
 export const formatDateFriendly = (d: Date): string => {
   const p = getVenezuelaTimeParts(d);

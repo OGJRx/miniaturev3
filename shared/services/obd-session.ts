@@ -1,4 +1,5 @@
 import { D1Database } from "@cloudflare/workers-types";
+import { toSqliteDateTime } from "../ui/formatters";
 
 export class ObdSessionService {
   static async activate(
@@ -6,11 +7,11 @@ export class ObdSessionService {
     adminId: number,
     ttlMs = 3600000,
   ): Promise<void> {
-    const expiresAt = new Date(Date.now() + ttlMs).toISOString();
+    const expiresAt = toSqliteDateTime(new Date(Date.now() + ttlMs));
     await db
       .prepare(
-        "INSERT INTO obd_sessions (admin_id, activated_at, expires_at) VALUES (?, CURRENT_TIMESTAMP, ?) " +
-          "ON CONFLICT(admin_id) DO UPDATE SET activated_at = CURRENT_TIMESTAMP, expires_at = ?",
+        "INSERT INTO obd_sessions (admin_id, activated_at, expires_at) VALUES (?, datetime('now'), ?) " +
+          "ON CONFLICT(admin_id) DO UPDATE SET activated_at = datetime('now'), expires_at = ?",
       )
       .bind(adminId, expiresAt, expiresAt)
       .run();
@@ -26,7 +27,7 @@ export class ObdSessionService {
   static async isActive(db: D1Database, adminId: number): Promise<boolean> {
     const res = await db
       .prepare(
-        "SELECT 1 as found FROM obd_sessions WHERE admin_id = ? AND expires_at > CURRENT_TIMESTAMP",
+        "SELECT 1 as found FROM obd_sessions WHERE admin_id = ? AND expires_at > datetime('now')",
       )
       .bind(adminId)
       .first<{ found: number }>();

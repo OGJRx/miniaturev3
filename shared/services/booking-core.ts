@@ -7,7 +7,11 @@ import {
   KILOMETRAJE_RANGES,
   SERVICE_OPTIONS,
 } from "../types/constants";
-import { formatDateISO, formatDateFriendly } from "../ui/formatters";
+import {
+  formatDateISO,
+  formatDateFriendly,
+  toSqliteDateTime,
+} from "../ui/formatters";
 import { getVenezuelaNow } from "../ui/timezone";
 
 export interface BookingStep {
@@ -27,7 +31,7 @@ export class BookingCoreService {
   ): Promise<EphemeralState> {
     const res = await this.db
       .prepare(
-        "SELECT session_id, telegram_user_id, telegram_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE telegram_user_id = ? AND platform = ? AND bot_type = ? AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) ORDER BY updated_at DESC LIMIT 1",
+        "SELECT session_id, telegram_user_id, telegram_chat_id, platform, active_mode, estado_flujo, paso_actual, bot_type, updated_at, vehiculo_tipo, vehiculo_motor, vehiculo_era, kilometraje, servicio_solicitado, fecha_cita, hora_cita FROM sessions WHERE telegram_user_id = ? AND platform = ? AND bot_type = ? AND (expires_at IS NULL OR expires_at > datetime('now')) ORDER BY updated_at DESC LIMIT 1",
       )
       .bind(platformUserId, platform, botType)
       .first<EphemeralState>();
@@ -35,7 +39,7 @@ export class BookingCoreService {
     if (res) return res;
 
     const sessionId = `S-${Date.now()}-${platformUserId.slice(-4)}`;
-    const expiresAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+    const expiresAt = toSqliteDateTime(new Date(Date.now() + 24 * 3600 * 1000));
     const newState: EphemeralState = {
       session_id: sessionId,
       telegram_user_id: platformUserId,
@@ -90,7 +94,7 @@ export class BookingCoreService {
 
     await this.db
       .prepare(
-        `UPDATE sessions SET ${sets}, updated_at = CURRENT_TIMESTAMP WHERE session_id = ?`,
+        `UPDATE sessions SET ${sets}, updated_at = datetime('now') WHERE session_id = ?`,
       )
       .bind(...values, sessionId)
       .run();

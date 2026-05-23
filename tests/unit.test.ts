@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { timingSafeEqual } from "../shared/security/crypto";
 import { buildCallback, parseCallback } from "../shared/security";
 import { smartSplitHtml } from "../shared/ui/html-utils";
-import { escapeHtml } from "../shared/ui/formatters";
+import { escapeHtml, toSqliteDateTime } from "../shared/ui/formatters";
 import { TitaniumCircuitBreaker } from "../shared/services/circuit-breaker";
 import {} from "../shared/services/slot-validator";
 import { CircuitService } from "../shared/types";
@@ -68,7 +68,7 @@ describe("Titanium Core Unit Tests", () => {
         bind: vi.fn().mockReturnThis(),
         first: vi.fn().mockResolvedValue({
           status: "open",
-          opened_at: new Date().toISOString(),
+          opened_at: toSqliteDateTime(new Date()),
         }),
         run: vi.fn().mockResolvedValue({}),
       };
