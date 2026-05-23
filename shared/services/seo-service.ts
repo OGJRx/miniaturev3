@@ -6,7 +6,11 @@ import { WhatsAppApi } from "../whatsapp/whatsapp-api";
 import { BorgLogger } from "./borg-logger";
 
 export class SeoService {
-  static async processQueue(db: D1Database, env: CoreEnv, ctx: BorgExecutionContext) {
+  static async processQueue(
+    db: D1Database,
+    env: CoreEnv,
+    ctx: BorgExecutionContext,
+  ) {
     const logger = new BorgLogger("SeoService", db);
     const now = toSqliteDateTime(new Date());
 
@@ -162,7 +166,11 @@ export class SeoService {
         }
       };
 
-      ctx.waitUntil(metricsTask().catch((e) => console.error("[SeoService] Metrics error:", e)));
+      ctx.waitUntil(
+        metricsTask().catch((e) =>
+          console.error("[SeoService] Metrics error:", e),
+        ),
+      );
     }
   }
 }
