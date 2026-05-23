@@ -37,6 +37,13 @@ export type Platform = "telegram" | "whatsapp";
 
 export type UiContext = Context & MessageCapable & { logger?: BorgLogger };
 
+/**
+ * Branded type for SQLite-compatible date-time strings (YYYY-MM-DD HH:mm:ss).
+ * This ensures that only strings formatted by toSqliteDateTime can be used
+ * in database operations requiring this specific format.
+ */
+export type SqliteDateTime = string & { readonly __brand: "SqliteDateTime" };
+
 export interface CoreEnv {
   TELEGRAM_ADMIN_IDS: string;
   FRONTEND_BOT_TOKEN: string;

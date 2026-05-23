@@ -1,14 +1,14 @@
 import { D1Database } from "@cloudflare/workers-types";
 import { CoreEnv } from "../types";
 import { TelegramApiFactory } from "../security";
-import { escapeHtml } from "../ui/formatters";
+import { escapeHtml, toSqliteDateTime } from "../ui/formatters";
 import { WhatsAppApi } from "../whatsapp/whatsapp-api";
 import { BorgLogger } from "./borg-logger";
 
 export class SeoService {
   static async processQueue(db: D1Database, env: CoreEnv) {
     const logger = new BorgLogger("SeoService", db);
-    const now = new Date().toISOString();
+    const now = toSqliteDateTime(new Date());
 
     let pending;
     try {
@@ -115,7 +115,7 @@ export class SeoService {
 
         await db
           .prepare(
-            "UPDATE seo_message_queue SET status = 'sent', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            "UPDATE seo_message_queue SET status = 'sent', updated_at = datetime('now') WHERE id = ?",
           )
           .bind(msg.id)
           .run();

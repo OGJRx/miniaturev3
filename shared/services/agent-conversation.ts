@@ -1,5 +1,6 @@
 import { D1Database } from "@cloudflare/workers-types";
 import { AiConversationItem } from "../types";
+import { toSqliteDateTime } from "../ui/formatters";
 
 export class AgentConversationService {
   static async appendToHistory(
@@ -30,8 +31,8 @@ export class AgentConversationService {
     }
 
     const historyStr = JSON.stringify(currentHistory);
-    const now = new Date().toISOString();
-    const expiresAt = new Date(Date.now() + 86400000).toISOString();
+    const now = toSqliteDateTime(new Date());
+    const expiresAt = toSqliteDateTime(new Date(Date.now() + 86400000));
 
     await db
       .prepare(

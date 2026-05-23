@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { TitaniumCircuitBreaker } from "../shared/services/circuit-breaker";
 import { CircuitService } from "../shared/types";
+import { toSqliteDateTime } from "../shared/ui/formatters";
 
 describe("TitaniumCircuitBreaker", () => {
   let dbMock: any;
@@ -29,7 +30,7 @@ describe("TitaniumCircuitBreaker", () => {
     const now = Date.now();
     dbMock.first.mockResolvedValueOnce({
       status: "open",
-      opened_at: new Date(now - 30000).toISOString(), // 30s ago
+      opened_at: toSqliteDateTime(new Date(now - 30000)), // 30s ago
     });
     const result = await TitaniumCircuitBreaker.shouldBlock(
       env,
@@ -42,7 +43,7 @@ describe("TitaniumCircuitBreaker", () => {
     const now = Date.now();
     dbMock.first.mockResolvedValueOnce({
       status: "open",
-      opened_at: new Date(now - 70000).toISOString(), // 70s ago
+      opened_at: toSqliteDateTime(new Date(now - 70000)), // 70s ago
     });
     const result = await TitaniumCircuitBreaker.shouldBlock(
       env,

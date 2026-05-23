@@ -65,6 +65,11 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
   - [x] **M-3**: Refactor global de referencias a base de datos.
   - [x] **M-4**: UUID de base de datos deshardcodeado/actualizado.
   - [x] **Architectural Note**: Webhook-only design (no polling) implemented for maximum efficiency and zero-cost edge operations.
+- [x] **Audit #12 — TEMPORAL INTEGRITY (TITANIUM TIMESTAMPS)**
+  - [x] **T-1**: Erradicación de `toISOString()` en la capa de persistencia (causa de colisión ASCII).
+  - [x] **T-2**: Implementación de `SqliteDateTime` (Branded Type) para garantizar formato `YYYY-MM-DD HH:mm:ss`.
+  - [x] **T-3**: Normalización de queries para usar `datetime('now')` en lugar de `CURRENT_TIMESTAMP` (consistencia DB-side).
+  - [x] **T-4**: Refactor total de servicios: `ObdSession`, `Maintenance`, `CircuitBreaker`, `BookingCore`, `SeoService`.
 
 ## ⚙️ OPERATIONAL LOGIC (v9.7.0)
 

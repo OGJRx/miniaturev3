@@ -1,5 +1,6 @@
 import { D1Database } from "@cloudflare/workers-types";
 import { CircuitService } from "../types";
+import { toSqliteDateTime } from "../ui/formatters";
 
 export class TitaniumCircuitBreaker {
   static async shouldBlock(
@@ -33,7 +34,7 @@ export class TitaniumCircuitBreaker {
     await env.DB.prepare(
       "UPDATE circuit_breakers SET status = 'closed', failure_count = 0, opened_at = NULL, updated_at = ? WHERE service = ?",
     )
-      .bind(new Date().toISOString(), service)
+      .bind(toSqliteDateTime(new Date()), service)
       .run();
   }
 
@@ -42,7 +43,7 @@ export class TitaniumCircuitBreaker {
     service: CircuitService,
     code?: number,
   ): Promise<void> {
-    const now = new Date().toISOString();
+    const now = toSqliteDateTime(new Date());
 
     const isTripCandidate = code !== undefined && code >= 500 && code !== 503;
 
@@ -77,7 +78,7 @@ export class TitaniumCircuitBreaker {
     env: { DB: D1Database },
     service: CircuitService,
   ): Promise<void> {
-    const now = new Date().toISOString();
+    const now = toSqliteDateTime(new Date());
     await env.DB.prepare(
       "INSERT INTO circuit_breakers (service, status, opened_at, failure_count, updated_at) " +
         "VALUES (?, 'open', ?, 3, ?) " +

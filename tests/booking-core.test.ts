@@ -23,7 +23,7 @@ describe("BookingCoreService", () => {
 
     expect(dbMock.prepare).toHaveBeenCalledWith(
       expect.stringContaining(
-        "AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)",
+        "AND (expires_at IS NULL OR expires_at > datetime('now'))",
       ),
     );
   });
