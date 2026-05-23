@@ -1,12 +1,12 @@
 import { D1Database } from "@cloudflare/workers-types";
-import { CoreEnv } from "../types";
+import { CoreEnv, BorgExecutionContext } from "../types";
 import { TelegramApiFactory } from "../security";
 import { escapeHtml, toSqliteDateTime } from "../ui/formatters";
 import { WhatsAppApi } from "../whatsapp/whatsapp-api";
 import { BorgLogger } from "./borg-logger";
 
 export class SeoService {
-  static async processQueue(db: D1Database, env: CoreEnv) {
+  static async processQueue(db: D1Database, env: CoreEnv, ctx: BorgExecutionContext) {
     const logger = new BorgLogger("SeoService", db);
     const now = toSqliteDateTime(new Date());
 
@@ -16,7 +16,8 @@ export class SeoService {
         .prepare(
           "SELECT q.id, q.ticket_id, q.msg_number, t.telegram_chat_id, t.platform " +
             "FROM seo_message_queue q JOIN tickets t ON q.ticket_id = t.ticket_id " +
-            "WHERE q.status = 'pending' AND q.scheduled_for <= ?",
+            "WHERE q.status = 'pending' AND q.scheduled_for <= ? " +
+            "LIMIT 25",
         )
         .bind(now)
         .all<{
@@ -74,14 +75,8 @@ export class SeoService {
       }
     }
 
-    const messagesProcessed = pending.results.length;
-    await db
-      .prepare(
-        "INSERT INTO business_metrics (metric_key, metric_value, bot_type) VALUES (?, ?, ?)",
-      )
-      .bind("messages_processed", messagesProcessed, "seo_cron")
-      .run()
-      .catch((e) => console.error("[SeoService] Metrics error:", e));
+    let sentCount = 0;
+    let failedCount = 0;
 
     for (const msg of pending.results) {
       try {
@@ -120,16 +115,54 @@ export class SeoService {
           .bind(msg.id)
           .run();
 
+        sentCount++;
         logger.info(
           "SEO_DISPATCH",
           `Message ${msg.msg_number} sent to ${msg.platform}:${msg.telegram_chat_id} for ticket ${msg.ticket_id}`,
         );
       } catch (e: unknown) {
+        failedCount++;
         logger.error(
           "SEO_DISPATCH",
           `Failed to send SEO message ${msg.id}: ${e instanceof Error ? e.message : String(e)}`,
         );
+
+        await db
+          .prepare(
+            "UPDATE seo_message_queue SET status = 'failed', updated_at = datetime('now') WHERE id = ?",
+          )
+          .bind(msg.id)
+          .run()
+          .catch((dbErr) =>
+            logger.error(
+              "SEO_FAILED_UPDATE",
+              `Error updating SEO status to failed for ID ${msg.id}: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`,
+            ),
+          );
       }
+    }
+
+    if (sentCount > 0 || failedCount > 0) {
+      const metricsTask = async () => {
+        if (sentCount > 0) {
+          await db
+            .prepare(
+              "INSERT INTO business_metrics (metric_key, metric_value, bot_type) VALUES (?, ?, ?)",
+            )
+            .bind("messages_sent", sentCount, "seo_cron")
+            .run();
+        }
+        if (failedCount > 0) {
+          await db
+            .prepare(
+              "INSERT INTO business_metrics (metric_key, metric_value, bot_type) VALUES (?, ?, ?)",
+            )
+            .bind("messages_failed", failedCount, "seo_cron")
+            .run();
+        }
+      };
+
+      ctx.waitUntil(metricsTask().catch((e) => console.error("[SeoService] Metrics error:", e)));
     }
   }
 }

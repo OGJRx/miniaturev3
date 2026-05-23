@@ -545,7 +545,7 @@ export default {
     };
     const db = env.DB;
 
-    await SeoService.processQueue(db, env);
+    await SeoService.processQueue(db, env, ctx);
     if (nowParts.hour % 6 === 0 && nowParts.minute === 0) {
       await IaQueueService.processPendingJobs(db, ctx, env);
       await MaintenanceService.runAudits(db, env);
