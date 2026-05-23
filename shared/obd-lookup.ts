@@ -22,17 +22,32 @@ export class ObdLookupService {
       .first<ObdResult>();
   }
 
+  static sanitizeFtsQuery(query: string): string {
+    return query
+      .replace(/["*()\-:]/g, " ")
+      .replace(/\b(AND|OR|NOT|NEAR)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w.length > 0)
+      .map((w) => `"${w}"`)
+      .join(" ");
+  }
+
   static async searchByDescription(
     db: D1Database,
     query: string,
   ): Promise<ObdResult[]> {
     if (!query || query.length < 3) return [];
 
+    const sanitized = this.sanitizeFtsQuery(query);
+    if (!sanitized) return [];
+
     const results = await db
       .prepare(
         "SELECT o.id, o.code, o.description, o.source, o.code_type, o.severity FROM obd_codes o JOIN obd_codes_fts f ON o.id = f.rowid WHERE obd_codes_fts MATCH ? ORDER BY rank LIMIT 5",
       )
-      .bind(query)
+      .bind(sanitized)
       .all<ObdResult>();
 
     return results.results || [];

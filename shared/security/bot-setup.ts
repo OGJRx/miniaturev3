@@ -46,15 +46,6 @@ export function setupBotMiddleware<C extends BorgContext<CoreEnv>>(
   });
 }
 
-export async function safeSendMessage(
-  a: Api,
-  c: string | number,
-  t: string,
-  o: Record<string, unknown> = {},
-): Promise<void> {
-  await a.sendMessage(c, t, o);
-}
-
 export function idempotencyMiddleware() {
   return async (ctx: Context & { env: CoreEnv }, next: () => Promise<void>) => {
     const updateId = ctx.update.update_id;

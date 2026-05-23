@@ -179,7 +179,13 @@ jobs:
           curl -fsS -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/setWebhook" \
             -d "url=${CORE_URL}/webhook/backend" \
             -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
-          echo "✅ Webhooks activated"
+
+          # WhatsApp Webhook Verification
+          echo "🔍 Verifying WhatsApp Webhook connectivity..."
+          WHATSAPP_VERIFY_TOKEN="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
+          curl -fsS "${CORE_URL}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=${WHATSAPP_VERIFY_TOKEN}&hub.challenge=test" | grep -q 'test' || exit 1
+
+          echo "✅ Webhooks activated and verified"
 
       - name: 🔐 Sync Secrets
         uses: cloudflare/wrangler-action@v3

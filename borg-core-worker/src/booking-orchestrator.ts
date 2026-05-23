@@ -102,6 +102,8 @@ export class BookingOrchestrator {
     );
     if (!parsed || !parsed.valid)
       return ctx.answerCallbackQuery("⚠️ Error de sesión");
+    if (parsed.expired)
+      return ctx.answerCallbackQuery("⚠️ Sesión expirada. Reinicia.");
 
     const { action, value } = parsed;
     const core = await this.getCore(ctx);

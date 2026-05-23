@@ -67,3 +67,4 @@ borg-core-worker/worker_logs.json
 # Local documentation environment folders
 /docs/
 /conductor/
+__pycache__/
