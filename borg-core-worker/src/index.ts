@@ -110,6 +110,9 @@ const orchestrator = new BookingOrchestrator();
 
 let whatsappDisabled = false;
 
+const ADMIN_PANEL_MESSAGE =
+  "🔱 <b>Borg Admin Nexus</b>\n\nPanel de control del Taller Titanium...";
+
 function validateWhatsAppConfig(env: CoreEnv) {
   const missing = [];
   if (!env.WHATSAPP_PHONE_NUMBER_ID) missing.push("WHATSAPP_PHONE_NUMBER_ID");
@@ -158,9 +161,6 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
       { command: "refresh_cmds", description: "🔄 Refresh Commands" },
     ])
     .catch(() => {});
-
-  const ADMIN_PANEL_MESSAGE =
-    "🔱 <b>Borg Admin Nexus</b>\n\nPanel de control del Taller Titanium...";
 
   backendBot.command("start", async (ctx) => {
     try {
