@@ -1,4 +1,4 @@
-import { Api, Context, Bot } from "grammy";
+import { Context, Bot } from "grammy";
 import {
   CoreEnv,
   BorgContext,

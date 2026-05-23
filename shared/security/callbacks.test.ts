@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { parseCallback, buildCallback, BORG_EPOCH } from "./index";
+import { parseCallback, buildCallback } from "./index";
 
 describe("parseCallback expiration", () => {
   const secret = "test-secret";
