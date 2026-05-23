@@ -240,6 +240,8 @@ async function handleBackendCallbackQuery(ctx: FrontendContext) {
     ctx.env.BORG_SECRET_KEY,
   );
   if (!parsed?.valid) return ctx.answerCallbackQuery("⚠️ Invalido");
+  if (parsed.expired)
+    return ctx.answerCallbackQuery("⚠️ Sesión expirada. Reinicia.");
   const secret = ctx.env.BORG_SECRET_KEY;
 
   if (parsed.action.startsWith("adm_")) {

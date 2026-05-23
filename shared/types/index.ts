@@ -92,7 +92,6 @@ export const EphemeralStateSchema = z.object({
   servicio_solicitado: z.string().optional().nullable(),
   fecha_cita: z.string().optional().nullable(),
   hora_cita: z.string().optional().nullable(),
-  bay_number: z.number().optional().nullable(),
 });
 export type EphemeralState = z.infer<typeof EphemeralStateSchema>;
 

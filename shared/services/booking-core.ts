@@ -82,7 +82,6 @@ export class BookingCoreService {
       "servicio_solicitado",
       "fecha_cita",
       "hora_cita",
-      "bay_number",
     ];
     const entries = Object.entries(data).filter(([k]) =>
       allowedKeys.includes(k as keyof EphemeralState),
