@@ -48,3 +48,33 @@ describe("ObdLookupService.sanitizeFtsQuery", () => {
     );
   });
 });
+
+describe("ObdLookupService.extractCodes", () => {
+  it("should extract single OBD-II code", () => {
+    expect(ObdLookupService.extractCodes("The code is P0420")).toEqual([
+      "P0420",
+    ]);
+  });
+
+  it("should extract multiple unique OBD-II codes", () => {
+    const text = "Found P0420 and also C0035, maybe B1234 too. P0420 again.";
+    const expected = ["P0420", "C0035", "B1234"];
+    expect(ObdLookupService.extractCodes(text)).toEqual(expected);
+  });
+
+  it("should handle mixed case codes", () => {
+    expect(ObdLookupService.extractCodes("p0420 and U1234")).toEqual([
+      "P0420",
+      "U1234",
+    ]);
+  });
+
+  it("should return empty array when no codes found", () => {
+    expect(ObdLookupService.extractCodes("no codes here")).toEqual([]);
+  });
+
+  it("should ignore invalid codes", () => {
+    // Too short, too long, wrong prefix
+    expect(ObdLookupService.extractCodes("P042 P04200 X0420")).toEqual([]);
+  });
+});

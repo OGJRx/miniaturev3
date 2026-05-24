@@ -16,6 +16,8 @@ BORG_VERSION = "9.7.0-TITANIUM"
 
 # WhatsApp Config
 WHATSAPP_API_VERSION = "v25.0"
+# NOTE: WHATSAPP_VERIFY_TOKEN is visible in Cloudflare Workers logs during webhook validation challenges.
+# This is a low-risk exposure as it only validates webhook ownership to Meta.
 
 
 [[d1_databases]]

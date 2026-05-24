@@ -53,5 +53,34 @@ export class MaintenanceService {
         toSqliteDateTime(new Date(Date.now() - retentionWA * 24 * 3600 * 1000)),
       )
       .run();
+
+    await this.logDatabaseSize(db);
+  }
+
+  private static async logDatabaseSize(db: D1Database) {
+    try {
+      const pageCountRes = await db.prepare("PRAGMA page_count").first<{
+        page_count: number;
+      }>();
+      const pageSizeRes = await db.prepare("PRAGMA page_size").first<{
+        page_size: number;
+      }>();
+
+      if (pageCountRes && pageSizeRes) {
+        const sizeBytes = pageCountRes.page_count * pageSizeRes.page_size;
+        await db
+          .prepare(
+            "INSERT INTO business_metrics (metric_key, metric_value, platform, bot_type, recorded_at) " +
+              "VALUES (?, ?, 'system', 'core', datetime('now')) " +
+              "ON CONFLICT(metric_key, platform, bot_type) DO UPDATE SET " +
+              "metric_value = excluded.metric_value, recorded_at = excluded.recorded_at",
+          )
+          .bind("d1_database_size_bytes", sizeBytes)
+          .run();
+        console.log(`[Maintenance] D1 Database Size: ${sizeBytes} bytes`);
+      }
+    } catch (e) {
+      console.error("[Maintenance] Error logging database size:", e);
+    }
   }
 }
