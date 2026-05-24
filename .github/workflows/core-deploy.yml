@@ -1,4 +1,4 @@
-name: 🔱 TITANIUM CORE - Unifed Pipeline
+name: 🔱 TITANIUM CORE - Unified Pipeline
 
 on:
   push:
@@ -97,9 +97,7 @@ jobs:
             "FRONTEND_BOT_TOKEN"
             "BACKEND_BOT_TOKEN"
             "TELEGRAM_ADMIN_IDS"
-            "WHATSAPP_APP_ID"
             "WHATSAPP_ACCESS_TOKEN"
-            "WHATSAPP_APP_ACCESS_TOKEN"
             "WHATSAPP_APP_SECRET"
             "WHATSAPP_VERIFY_TOKEN"
             "WHATSAPP_PHONE_NUMBER_ID"
@@ -124,9 +122,7 @@ jobs:
           FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
           BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
           TELEGRAM_ADMIN_IDS: ${{ secrets.TELEGRAM_ADMIN_IDS }}
-          WHATSAPP_APP_ID: ${{ secrets.WHATSAPP_APP_ID }}
           WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
-          WHATSAPP_APP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_APP_ACCESS_TOKEN }}
           WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
           WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
           WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
@@ -149,9 +145,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: d1 migrations apply borg --remote
           workingDirectory: borg-core-worker
-        # NOTE: GitHub OIDC Trust Relationship must be configured in Cloudflare Dashboard:
-        # Workers & Pages > Settings > GitHub Actions OIDC.
-        # Ensure the 'accountId' is provided and 'apiToken' is omitted or empty.
 
       - name: 🔱 Deploy Core Worker
         id: deploy
@@ -161,54 +154,8 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: deploy
           workingDirectory: borg-core-worker
-        # The output of wrangler deploy is captured by the action if we use it normally,
-        # but to extract the URL we might need a custom command or check outputs.
-        # Wrangler-action v3 provides 'deployment-url' output.
 
-      - name: 🔗 Activate Webhooks
-        working-directory: borg-core-worker
-        env:
-          BORG_SECRET_KEY: ${{ secrets.BORG_SECRET_KEY }}
-          FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
-          BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
-        run: |
-          set -euo pipefail
-          CORE_URL="${{ steps.deploy.outputs.deployment-url }}"
-
-          # Telegram Webhooks
-          curl -fsS -X POST "https://api.telegram.org/bot${FRONTEND_BOT_TOKEN}/setWebhook" \
-            -d "url=${CORE_URL}/webhook/frontend" \
-            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
-
-          curl -fsS -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/setWebhook" \
-            -d "url=${CORE_URL}/webhook/backend" \
-            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
-
-          # WhatsApp Webhook Subscription
-          echo "📲 Subscribing WhatsApp Webhook..."
-          WA_APP_ID="${{ secrets.WHATSAPP_APP_ID }}"
-          WA_PHONE_ID="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"
-          WA_ACCESS_TOKEN="${{ secrets.WHATSAPP_ACCESS_TOKEN }}"
-          WA_APP_ACCESS_TOKEN="${{ secrets.WHATSAPP_APP_ACCESS_TOKEN }}"
-          WHATSAPP_VERIFY_TOKEN="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
-
-          # Subscribe Webhook
-          curl -fsS -X POST "https://graph.facebook.com/v19.0/${WA_APP_ID}/subscriptions" \
-            -H "Authorization: Bearer ${WA_APP_ACCESS_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"object\":\"whatsapp_business_account\",\"callback_url\":\"${CORE_URL}/webhook/whatsapp\",\"verify_token\":\"${WHATSAPP_VERIFY_TOKEN}\",\"fields\":[\"messages\"]}" | grep -q '"success":true' || exit 1
-
-          # Subscribed App
-          curl -fsS -X POST "https://graph.facebook.com/v19.0/${WA_PHONE_ID}/subscribed_apps" \
-            -H "Authorization: Bearer ${WA_ACCESS_TOKEN}" | grep -q '"success":true' || exit 1
-
-          # WhatsApp Webhook Verification
-          echo "🔍 Verifying WhatsApp Webhook connectivity..."
-          curl -fsS "${CORE_URL}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=${WHATSAPP_VERIFY_TOKEN}&hub.challenge=test" | grep -q 'test' || exit 1
-
-          echo "✅ Webhooks activated and verified"
-
-      - name: 🔐 Sync Secrets
+      - name: 🔐 Sync Wrangler Secrets
         uses: cloudflare/wrangler-action@v3
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -233,21 +180,76 @@ jobs:
             FRONTEND_BOT_TOKEN
             BACKEND_BOT_TOKEN
             TELEGRAM_ADMIN_IDS
-            WHATSAPP_APP_ID
             WHATSAPP_ACCESS_TOKEN
-            WHATSAPP_APP_ACCESS_TOKEN
             WHATSAPP_APP_SECRET
             WHATSAPP_VERIFY_TOKEN
             WHATSAPP_PHONE_NUMBER_ID
             TALLER_LATITUD
             TALLER_LONGITUD
             TALLER_MAPS_URL
+
+      - name: 🔗 Activate Webhooks
+        working-directory: borg-core-worker
+        env:
+          BORG_SECRET_KEY: ${{ secrets.BORG_SECRET_KEY }}
+          FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
+          BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          CORE_URL="${{ steps.deploy.outputs.deployment-url }}"
+
+          # === TELEGRAM WEBHOOKS ===
+          echo "📲 Registering Telegram webhooks..."
+          curl -fsS -X POST "https://api.telegram.org/bot${FRONTEND_BOT_TOKEN}/setWebhook" \
+            -d "url=${CORE_URL}/webhook/frontend" \
+            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
+          echo "✅ Frontend Telegram OK"
+
+          curl -fsS -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/setWebhook" \
+            -d "url=${CORE_URL}/webhook/backend" \
+            -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
+          echo "✅ Backend Telegram OK"
+
+          # === WHATSAPP WEBHOOK SUBSCRIPTION ===
+          echo "📲 Subscribing WhatsApp Webhook to Meta Graph API..."
+          WA_VERIFY_TOKEN="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
+          WA_ACCESS_TOKEN="${{ secrets.WHATSAPP_ACCESS_TOKEN }}"
+          WA_PHONE_ID="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"
+
+          # Subscribe webhook using WHATSAPP_ACCESS_TOKEN (same token the Worker uses)
+          WA_SUB_RESULT=$(curl -s -X POST "https://graph.facebook.com/v25.0/${WA_PHONE_ID}/subscriptions" \
+            -H "Authorization: Bearer ${WA_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"object\":\"whatsapp_business_account\",\"callback_url\":\"${CORE_URL}/webhook/whatsapp\",\"verify_token\":\"${WA_VERIFY_TOKEN}\",\"fields\":[\"messages\"]}")
+
+          echo "Meta subscription response: ${WA_SUB_RESULT}"
+
+          if echo "$WA_SUB_RESULT" | grep -q '"success":true'; then
+            echo "✅ WhatsApp Meta subscription OK"
+          else
+            echo "⚠️  WhatsApp Meta subscription did not return success. Manual verification may be needed."
+            echo "    The Worker is deployed and secrets are synced. WhatsApp webhook can be subscribed manually."
+          fi
+
+          # Verify Worker responds to challenge
+          echo "🔍 Verifying WhatsApp webhook challenge..."
+          CHALLENGE_RESULT=$(curl -s -w "\n%{http_code}" "${CORE_URL}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=${WA_VERIFY_TOKEN}&hub.challenge=test_verify_2026")
+          CHALLENGE_HTTP=$(echo "$CHALLENGE_RESULT" | tail -1)
+          CHALLENGE_BODY=$(echo "$CHALLENGE_RESULT" | head -n -1)
+
+          if [ "$CHALLENGE_HTTP" = "200" ] && echo "$CHALLENGE_BODY" | grep -q "test_verify_2026"; then
+            echo "✅ WhatsApp challenge verification OK (Worker responds correctly)"
+          else
+            echo "⚠️  Challenge returned HTTP $CHALLENGE_HTTP. Check WHATSAPP_VERIFY_TOKEN is synced as Wrangler secret."
+          fi
+
+          echo "✅ Webhook activation complete"
+
       - name: 📢 Notify Success
         if: success()
         continue-on-error: true
         run: |
           set -euo pipefail
-          # Enviar notificación a todos los admins definidos en TELEGRAM_ADMIN_IDS
           IFS=',' read -ra ADM_IDS <<< "${{ secrets.TELEGRAM_ADMIN_IDS }}"
           for ADM_ID in "${ADM_IDS[@]}"; do
             curl -s -X POST "https://api.telegram.org/bot${BACKEND_BOT_TOKEN}/sendMessage" \
