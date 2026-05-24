@@ -73,7 +73,7 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
     <div class="max-w-4xl mx-auto">
         <header class="flex justify-between items-center mb-8">
             <div>
-                <h1 class="text-3xl font-bold text-blue-400">🔱 Titanium Core</h1>
+                <h1 class="text-3xl font-bold text-blue-400">Titanium Core</h1>
                 <p class="text-slate-400">Panel de Control de Citas</p>
             </div>
             <div class="flex gap-2">
@@ -87,9 +87,7 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
         </header>
 
         <div class="flex flex-wrap gap-4 mb-6 items-center bg-slate-900/50 p-4 rounded-xl border border-slate-800">
-            <div id="summary-container" class="flex gap-2">
-                <!-- Summary Badges -->
-            </div>
+            <div id="summary-container" class="flex gap-2"></div>
             <div class="flex-grow"></div>
             <select id="status-filter" class="filter-select" onchange="fetchAppointments()">
                 <option value="">Todos los estados</option>
@@ -106,102 +104,107 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
     </div>
 
     <script nonce="__NONCE__">
-        let currentData = [];
+        let currentData = __APPOINTMENTS_DATA__;
         const urlToken = new URLSearchParams(window.location.search).get('token');
-        function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+        function esc(s) { var d = document.createElement('div'); d.textContent = String(s != null ? s : ''); return d.innerHTML; }
 
         function buildApiUrl(path) {
-            const params = new URLSearchParams();
-            const status = document.getElementById('status-filter').value;
-            if (urlToken) params.set('token', urlToken);
-            if (status) params.set('status', status);
-            const qs = params.toString();
+            var p = new URLSearchParams();
+            var st = document.getElementById('status-filter').value;
+            if (urlToken) p.set('token', urlToken);
+            if (st) p.set('status', st);
+            var qs = p.toString();
             return path + (qs ? '?' + qs : '');
         }
 
         function updateSummary(data) {
-            const summary = document.getElementById('summary-container');
-            const total = data.length;
-            const pending = data.filter(a => a.estado === 'pendiente').length;
-            const confirmed = data.filter(a => a.estado === 'confirmado').length;
-
-            summary.innerHTML = '<div class="summary-badge"><span class="text-slate-400 mr-2">Total:</span>' + total + '</div>' +
-                                '<div class="summary-badge"><span class="text-yellow-500 mr-2">⏳</span>' + pending + '</div>' +
-                                '<div class="summary-badge"><span class="text-green-500 mr-2">✅</span>' + confirmed + '</div>';
+            var el = document.getElementById('summary-container');
+            var total = data.length;
+            var pend = 0, conf = 0;
+            for (var i = 0; i < data.length; i++) {
+                if (data[i].estado === 'pendiente') pend++;
+                if (data[i].estado === 'confirmado') conf++;
+            }
+            el.innerHTML = '<div class="summary-badge"><span class="text-slate-400 mr-2">Total:</span>' + total + '</div>' +
+                '<div class="summary-badge"><span style="color:#ffb703" class="mr-2">&#9203;</span>' + pend + '</div>' +
+                '<div class="summary-badge"><span style="color:#2ecc71" class="mr-2">&#9989;</span>' + conf + '</div>';
         }
 
-        async function exportCSV() {
-            if (currentData.length === 0) return;
-            const headers = ['Ticket ID', 'Fecha', 'Hora', 'Vehiculo', 'Servicio', 'Estado'];
-            const rows = currentData.map(a => [a.ticket_id, a.fecha_cita, a.hora_cita, a.vehiculo_tipo, a.servicio_solicitado, a.estado]);
-            const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'citas-titanium.csv';
-            a.click();
+        function renderCards(data) {
+            var container = document.getElementById('appointments-container');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="text-center py-12 text-slate-500 italic">No hay citas programadas</div>';
+                return;
+            }
+            var grouped = {};
+            for (var i = 0; i < data.length; i++) {
+                var d = data[i].fecha_cita;
+                if (!grouped[d]) grouped[d] = [];
+                grouped[d].push(data[i]);
+            }
+            var dates = Object.keys(grouped).sort();
+            var html = '';
+            for (var di = 0; di < dates.length; di++) {
+                var date = dates[di];
+                var appts = grouped[date].sort(function(a, b) { return a.hora_cita.localeCompare(b.hora_cita); });
+                html += '<div class="mb-6"><h2 class="text-lg font-semibold text-slate-300 mb-3 flex items-center">';
+                html += '<span class="bg-slate-800 px-3 py-1 rounded-md">' + esc(date) + '</span></h2>';
+                html += '<div class="grid gap-3">';
+                for (var ai = 0; ai < appts.length; ai++) {
+                    var a = appts[ai];
+                    html += '<div class="appointment-card flex justify-between items-center"><div>';
+                    html += '<div class="flex items-center gap-2">';
+                    html += '<span class="text-blue-300 font-mono font-bold text-lg">' + esc(a.hora_cita) + '</span>';
+                    html += '<span class="text-slate-500">|</span>';
+                    html += '<span class="font-semibold">' + esc(a.vehiculo_tipo) + '</span></div>';
+                    html += '<div class="text-slate-400 text-sm mt-1">' + esc(a.servicio_solicitado) + '</div></div>';
+                    html += '<div class="text-right">';
+                    html += '<div class="text-xs uppercase font-bold tracking-wider status-' + esc(a.estado) + '">' + esc(a.estado) + '</div>';
+                    html += '<div class="text-[10px] text-slate-600 mt-1 font-mono">' + esc(a.ticket_id) + '</div>';
+                    html += '</div></div>';
+                }
+                html += '</div></div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function exportCSV() {
+            if (!currentData || currentData.length === 0) return;
+            var headers = ['Ticket ID', 'Fecha', 'Hora', 'Vehiculo', 'Servicio', 'Estado'];
+            var rows = [];
+            for (var i = 0; i < currentData.length; i++) {
+                var a = currentData[i];
+                rows.push([a.ticket_id, a.fecha_cita, a.hora_cita, a.vehiculo_tipo, a.servicio_solicitado, a.estado]);
+            }
+            var lines = [headers.join(',')];
+            for (var r = 0; r < rows.length; r++) lines.push(rows[r].join(','));
+            var csvContent = lines.join(String.fromCharCode(10));
+            var blob = new Blob([csvContent], { type: 'text/csv' });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement('a');
+            link.href = url;
+            link.download = 'citas-titanium.csv';
+            link.click();
         }
 
         async function fetchAppointments() {
-            const container = document.getElementById('appointments-container');
+            var container = document.getElementById('appointments-container');
             try {
-                const res = await fetch(buildApiUrl('/api/appointments'), { credentials: 'include' });
-                if (!res.ok) throw new Error('No autorizado');
-                const data = await res.json();
+                var res = await fetch(buildApiUrl('/api/appointments'), { credentials: 'include' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var data = await res.json();
                 currentData = data;
                 updateSummary(data);
-
-                if (data.length === 0) {
-                    container.innerHTML = '<div class="text-center py-12 text-slate-500 italic">No hay citas programadas</div>';
-                    return;
-                }
-
-                const grouped = data.reduce((acc, appt) => {
-                    const date = appt.fecha_cita;
-                    if (!acc[date]) acc[date] = [];
-                    acc[date].push(appt);
-                    return acc;
-                }, {});
-
-                container.innerHTML = Object.entries(grouped)
-                    .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([date, appts]) => {
-                        const dateBadge = '<span class="bg-slate-800 px-3 py-1 rounded-md">' + esc(date) + '</span>';
-                        const cards = appts.sort((a, b) => a.hora_cita.localeCompare(b.hora_cita)).map(appt => {
-                            return '<div class="appointment-card flex justify-between items-center">' +
-                                        '<div>' +
-                                            '<div class="flex items-center gap-2">' +
-                                                '<span class="text-blue-300 font-mono font-bold text-lg">' + esc(appt.hora_cita) + '</span>' +
-                                                '<span class="text-slate-500">|</span>' +
-                                                '<span class="font-semibold">' + esc(appt.vehiculo_tipo) + '</span>' +
-                                            '</div>' +
-                                            '<div class="text-slate-400 text-sm mt-1">' + esc(appt.servicio_solicitado) + '</div>' +
-                                        '</div>' +
-                                        '<div class="text-right">' +
-                                            '<div class="text-xs uppercase font-bold tracking-wider status-' + esc(appt.estado) + '">' + esc(appt.estado) + '</div>' +
-                                            '<div class="text-[10px] text-slate-600 mt-1 font-mono">' + esc(appt.ticket_id) + '</div>' +
-                                        '</div>' +
-                                    '</div>';
-                        }).join('');
-
-                        return '<div class="mb-6">' +
-                                    '<h2 class="text-lg font-semibold text-slate-300 mb-3 flex items-center">' + dateBadge + '</h2>' +
-                                    '<div class="grid gap-3">' + cards + '</div>' +
-                                '</div>';
-                    }).join('');
-
+                renderCards(data);
             } catch (err) {
-                let errorMsg = err.message;
-                if (err.message === 'No autorizado' || err.message.includes('401')) {
-                    errorMsg = 'Sesión expirada o token inválido. Por favor, vuelve a entrar desde el bot de administración.';
-                }
                 container.innerHTML = '<div class="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg text-center">' +
-                    '⚠️ Error: ' + esc(errorMsg) +
-                '</div>';
+                    'Error: ' + esc(err.message) + '</div>';
             }
         }
-        fetchAppointments();
+
+        updateSummary(currentData);
+        renderCards(currentData);
     </script>
 </body>
 </html>`;

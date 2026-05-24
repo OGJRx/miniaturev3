@@ -501,20 +501,39 @@ async function handleCalendarMiniApp(
 ): Promise<Response> {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
+  const isAuth = token && (await timingSafeEqual(token, env.BORG_SECRET_KEY));
+
+  // Server-side data embedding: query appointments directly from D1
+  let appointmentsJson = "[]";
+  if (isAuth) {
+    try {
+      const results = await env.DB.prepare(
+        "SELECT ticket_id, vehiculo_tipo, servicio_solicitado, fecha_cita, hora_cita, estado " +
+        "FROM tickets WHERE estado != 'cancelado' ORDER BY fecha_cita ASC, hora_cita ASC LIMIT 200",
+      ).all<{ ticket_id: string; vehiculo_tipo: string; servicio_solicitado: string; fecha_cita: string; hora_cita: string; estado: string }>();
+      appointmentsJson = JSON.stringify(results.results ?? []);
+    } catch (e) {
+      console.error("[Calendar] D1 query failed:", e);
+    }
+  }
+
   const nonce = crypto.randomUUID();
-  const html = CALENDAR_HTML.replace("__NONCE__", nonce);
+  const html = CALENDAR_HTML
+    .replace("__NONCE__", nonce)
+    .replace("__APPOINTMENTS_DATA__", appointmentsJson);
+
   const response = new Response(html, {
     headers: {
       "Content-Type": "text/html",
       "X-Borg-Nonce": nonce,
     },
   });
-  if (token && (await timingSafeEqual(token, env.BORG_SECRET_KEY))) {
+  if (isAuth) {
     const ts = Math.floor(Date.now() / 1000).toString(16);
     const sig = (await hmacSha256(env.BORG_SECRET_KEY, ts)).substring(0, 32);
     response.headers.append(
       "Set-Cookie",
-      `borg_session=${ts}.${sig}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=86400`,
+      `borg_session=${ts}.${sig}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400`,
     );
   }
   return response;
