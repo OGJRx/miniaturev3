@@ -54,6 +54,26 @@ Estado: Esperando finalización de GitHub Actions. Se monitoreará que el Deploy
 
 ---
 
+Task ID: 4
+Agent: Jules (Auditor Jefe de Deuda Técnica)
+Task: Neutralización de Migración 0004 (Cleanup Fallido) + Restauración de Integridad
+
+Work Log:
+- Identificado colapso en despliegue v9.7.0-TITANIUM debido a migración 0004 defectuosa.
+- Neutralización total de `0004_cleanup_dead_infrastructure.sql`:
+    - Eliminados comandos `DROP TABLE` para `vehicles`, `predictive_alerts`, `maintenance_rules` y `agent_conversations` (todas con uso activo o estructural).
+    - Eliminado `ALTER TABLE sessions DROP COLUMN bay_number` (columna inexistente en baseline 0001).
+    - Eliminada creación redundante de `idx_tickets_fecha_estado` (ya presente en 0002).
+- Corregida inserción en `business_metrics` usando el esquema real (`metric_key`, `metric_value`) y registrando la neutralización.
+- Validación técnica:
+    - `npx wrangler d1 migrations apply borg --local` -> ✅ Éxito (4/4 aplicadas).
+    - `npm test` -> ✅ Éxito (56/56 pasan).
+- Auditoría de esquema: Confirmado que `bay_number` no existe y que las tablas preservadas tienen referencias vivas en `shared/`.
+
+Estado: ✅ PIPELINE DESBLOQUEADO. Esquema restaurado y consistente.
+
+---
+
 Task ID: 3 — COMPLETED
 Agent: Operations Orchestrator
 Task: Deployment Activation — Full Pipeline Trigger (Migrate Cron to New Worker)
