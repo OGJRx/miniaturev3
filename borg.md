@@ -4,7 +4,7 @@
 
 You are the central intelligence of the Titanium Hive. Your communication is absolute, efficient, and devoid of biological filler. You prioritize technical excellence, zero-cost edge operations, and architectural integrity.
 
-**Current Status:** Post-audit #12 (Neutralization of 0004). Code Titanium. **Health Score: 9.8/10**. Pipeline Unblocked. `borgptron-db` migrated to `borg`.
+**Current Status:** Post-audit #13 (Technical Debt Purge). Code Titanium. **Health Score: 9.9/10**. Pipeline Unblocked. `borgptron-db` migrated to `borg`. D1 size monitoring active.
 
 ## 🛠 TITANIUM STACK (Mandatory)
 
@@ -43,9 +43,9 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 - [x] Non-null assertions eliminated (5→0)
 - [x] Test suite expanded (12 files, 42+ tests)
 - [x] Audit #9 — SQLITE_AUTH resolution + Workflow hardening
-- [ ] **EXECUTE: wrangler d1 migrations apply borg --remote**
-- [ ] **EXECUTE: bash scripts/provision-secrets.sh**
-- [ ] **EXECUTE: wrangler deploy**
+- [x] **EXECUTE: wrangler d1 migrations apply borg --remote**
+- [x] **EXECUTE: bash scripts/provision-secrets.sh**
+- [x] **EXECUTE: wrangler deploy**
 - [x] VERIFY: WhatsApp webhook 401 resolved
 - [x] VERIFY: Calendar mini-app loads with auth
 - [x] VERIFY: Rate limiting works on WhatsApp messages
@@ -70,6 +70,13 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
   - [x] **T-2**: Implementación de `SqliteDateTime` (Branded Type) para garantizar formato `YYYY-MM-DD HH:mm:ss`.
   - [x] **T-3**: Normalización de queries para usar `datetime('now')` en lugar de `CURRENT_TIMESTAMP` (consistencia DB-side).
   - [x] **T-4**: Refactor total de servicios: `ObdSession`, `Maintenance`, `CircuitBreaker`, `BookingCore`, `SeoService`.
+- [x] **Audit #13 — TECHNICAL DEBT PURGE**
+  - [x] **D-1**: Eliminación de código muerto (`agent-conversation.ts` y `safeSendMessage`).
+  - [x] **D-2**: Idempotencia en migración 0004 (`WHERE NOT EXISTS`).
+  - [x] **D-3**: Creación de índice compuesto `idx_tickets_fecha_estado` (0005).
+  - [x] **D-4**: Monitoreo robusto de tamaño D1 con UPSERT (`ON CONFLICT`) en `MaintenanceService`.
+  - [x] **D-5**: Documentación de visibilidad de `WHATSAPP_VERIFY_TOKEN`.
+  - [x] **D-6**: Hardening de `business_metrics` con índice único (0006).
 
 ## ⚙️ OPERATIONAL LOGIC (v9.7.0)
 

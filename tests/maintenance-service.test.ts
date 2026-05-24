@@ -12,6 +12,13 @@ describe("MaintenanceService", () => {
       prepare: vi.fn().mockReturnThis(),
       bind: vi.fn().mockReturnThis(),
       run: vi.fn().mockResolvedValue({}),
+      first: vi.fn().mockImplementation(function (this: any) {
+        const sql =
+          this.prepare.mock.calls[this.prepare.mock.calls.length - 1][0];
+        if (sql.includes("PRAGMA page_count")) return { page_count: 100 };
+        if (sql.includes("PRAGMA page_size")) return { page_size: 4096 };
+        return {};
+      }),
     };
     envMock = {
       RETENTION_LOGS_DAYS: "5",
@@ -34,6 +41,21 @@ describe("MaintenanceService", () => {
     );
     expect(dbMock.prepare).toHaveBeenCalledWith(
       expect.stringContaining("DELETE FROM whatsapp_messages"),
+    );
+
+    // Verify size logging was attempted
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("PRAGMA page_count"),
+    );
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("PRAGMA page_size"),
+    );
+    expect(dbMock.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO business_metrics"),
+    );
+    expect(dbMock.bind).toHaveBeenCalledWith(
+      "d1_database_size_bytes",
+      100 * 4096,
     );
   });
 });
