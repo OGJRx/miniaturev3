@@ -13,7 +13,8 @@ describe("MaintenanceService", () => {
       bind: vi.fn().mockReturnThis(),
       run: vi.fn().mockResolvedValue({}),
       first: vi.fn().mockImplementation(function (this: any) {
-        const sql = this.prepare.mock.calls[this.prepare.mock.calls.length - 1][0];
+        const sql =
+          this.prepare.mock.calls[this.prepare.mock.calls.length - 1][0];
         if (sql.includes("PRAGMA page_count")) return { page_count: 100 };
         if (sql.includes("PRAGMA page_size")) return { page_size: 4096 };
         return {};
