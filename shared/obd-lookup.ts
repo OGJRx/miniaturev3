@@ -4,9 +4,9 @@ export interface ObdResult {
   id: number;
   code: string;
   description: string;
-  source: string;
-  code_type: string | null;
-  severity: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+  category: string;
+  subcategory: string | null;
+  severity: string;
 }
 
 export class ObdLookupService {
@@ -16,7 +16,7 @@ export class ObdLookupService {
   ): Promise<ObdResult | null> {
     return await db
       .prepare(
-        "SELECT id, code, description, source, code_type, severity FROM obd_codes WHERE code = ? LIMIT 1",
+        "SELECT id, code, description, category, subcategory, severity FROM obd_codes WHERE code = ? LIMIT 1",
       )
       .bind(code.toUpperCase().trim())
       .first<ObdResult>();
@@ -45,7 +45,7 @@ export class ObdLookupService {
 
     const results = await db
       .prepare(
-        "SELECT o.id, o.code, o.description, o.source, o.code_type, o.severity FROM obd_codes o JOIN obd_codes_fts f ON o.id = f.rowid WHERE obd_codes_fts MATCH ? ORDER BY rank LIMIT 5",
+        "SELECT o.id, o.code, o.description, o.category, o.subcategory, o.severity FROM obd_codes o JOIN obd_codes_fts f ON o.id = f.rowid WHERE obd_codes_fts MATCH ? ORDER BY rank LIMIT 5",
       )
       .bind(sanitized)
       .all<ObdResult>();
@@ -62,7 +62,7 @@ export class ObdLookupService {
     const placeholders = uniqueCodes.map(() => "?").join(",");
     const results = await db
       .prepare(
-        `SELECT id, code, description, source, code_type, severity FROM obd_codes WHERE code IN (${placeholders})`,
+        `SELECT id, code, description, category, subcategory, severity FROM obd_codes WHERE code IN (${placeholders})`,
       )
       .bind(...uniqueCodes)
       .all<ObdResult>();

@@ -38,7 +38,7 @@ export class AgentFactory {
         `Calling Gemini API (${env.AI_MODEL_NAME}) for ${name} [Attempt ${attempt + 1}]`,
       );
     } else {
-      console.error(
+      console.info(
         `[${traceId}] [AgentFactory:${name}] PRE-CALL: ${env.AI_MODEL_NAME} (Attempt ${attempt + 1})`,
       );
     }

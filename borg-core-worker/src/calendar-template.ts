@@ -183,8 +183,12 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
                     }).join('');
 
             } catch (err) {
+                let errorMsg = err.message;
+                if (err.message === 'No autorizado' || err.message.includes('401')) {
+                    errorMsg = 'Sesión expirada o token inválido. Por favor, vuelve a entrar desde el bot de administración.';
+                }
                 container.innerHTML = '<div class="bg-red-900/20 border border-red-500 text-red-200 p-4 rounded-lg text-center">' +
-                    '⚠️ Error: ' + esc(err.message) + '. Asegúrate de estar autenticado.' +
+                    '⚠️ Error: ' + esc(errorMsg) +
                 '</div>';
             }
         }

@@ -97,7 +97,9 @@ jobs:
             "FRONTEND_BOT_TOKEN"
             "BACKEND_BOT_TOKEN"
             "TELEGRAM_ADMIN_IDS"
+            "WHATSAPP_APP_ID"
             "WHATSAPP_ACCESS_TOKEN"
+            "WHATSAPP_APP_ACCESS_TOKEN"
             "WHATSAPP_APP_SECRET"
             "WHATSAPP_VERIFY_TOKEN"
             "WHATSAPP_PHONE_NUMBER_ID"
@@ -122,7 +124,9 @@ jobs:
           FRONTEND_BOT_TOKEN: ${{ secrets.FRONTEND_BOT_TOKEN }}
           BACKEND_BOT_TOKEN: ${{ secrets.BACKEND_BOT_TOKEN }}
           TELEGRAM_ADMIN_IDS: ${{ secrets.TELEGRAM_ADMIN_IDS }}
+          WHATSAPP_APP_ID: ${{ secrets.WHATSAPP_APP_ID }}
           WHATSAPP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_ACCESS_TOKEN }}
+          WHATSAPP_APP_ACCESS_TOKEN: ${{ secrets.WHATSAPP_APP_ACCESS_TOKEN }}
           WHATSAPP_APP_SECRET: ${{ secrets.WHATSAPP_APP_SECRET }}
           WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
           WHATSAPP_PHONE_NUMBER_ID: ${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}
@@ -180,9 +184,26 @@ jobs:
             -d "url=${CORE_URL}/webhook/backend" \
             -d "secret_token=${BORG_SECRET_KEY}" | grep -q '"ok":true' || exit 1
 
+          # WhatsApp Webhook Subscription
+          echo "📲 Subscribing WhatsApp Webhook..."
+          WA_APP_ID="${{ secrets.WHATSAPP_APP_ID }}"
+          WA_PHONE_ID="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"
+          WA_ACCESS_TOKEN="${{ secrets.WHATSAPP_ACCESS_TOKEN }}"
+          WA_APP_ACCESS_TOKEN="${{ secrets.WHATSAPP_APP_ACCESS_TOKEN }}"
+          WHATSAPP_VERIFY_TOKEN="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
+
+          # Subscribe Webhook
+          curl -fsS -X POST "https://graph.facebook.com/v19.0/${WA_APP_ID}/subscriptions" \
+            -H "Authorization: Bearer ${WA_APP_ACCESS_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"object\":\"whatsapp_business_account\",\"callback_url\":\"${CORE_URL}/webhook/whatsapp\",\"verify_token\":\"${WHATSAPP_VERIFY_TOKEN}\",\"fields\":[\"messages\"]}" | grep -q '"success":true' || exit 1
+
+          # Subscribed App
+          curl -fsS -X POST "https://graph.facebook.com/v19.0/${WA_PHONE_ID}/subscribed_apps" \
+            -H "Authorization: Bearer ${WA_ACCESS_TOKEN}" | grep -q '"success":true' || exit 1
+
           # WhatsApp Webhook Verification
           echo "🔍 Verifying WhatsApp Webhook connectivity..."
-          WHATSAPP_VERIFY_TOKEN="${{ secrets.WHATSAPP_VERIFY_TOKEN }}"
           curl -fsS "${CORE_URL}/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=${WHATSAPP_VERIFY_TOKEN}&hub.challenge=test" | grep -q 'test' || exit 1
 
           echo "✅ Webhooks activated and verified"
@@ -212,7 +233,9 @@ jobs:
             FRONTEND_BOT_TOKEN
             BACKEND_BOT_TOKEN
             TELEGRAM_ADMIN_IDS
+            WHATSAPP_APP_ID
             WHATSAPP_ACCESS_TOKEN
+            WHATSAPP_APP_ACCESS_TOKEN
             WHATSAPP_APP_SECRET
             WHATSAPP_VERIFY_TOKEN
             WHATSAPP_PHONE_NUMBER_ID

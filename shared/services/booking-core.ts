@@ -234,6 +234,19 @@ export class BookingCoreService {
           };
         } else {
           newState.estado_flujo = "cancelado";
+          // If we were at a step where we had some info, we could notify
+          if (newState.session_id) {
+            try {
+              await this.db
+                .prepare(
+                  "INSERT INTO notifications (type, message) VALUES ('appointment_cancelled', ?)",
+                )
+                .bind(`Sesión de agendamiento cancelada por el usuario.`)
+                .run();
+            } catch (e) {
+              console.error("[BookingCore] Failed to insert notification:", e);
+            }
+          }
           return {
             step: { status: "CANCELLED", message: "CANCELLED" },
             newState,

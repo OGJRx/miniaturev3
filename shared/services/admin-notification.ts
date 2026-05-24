@@ -49,6 +49,18 @@ export class AdminNotificationService {
     return res?.total ?? 0;
   }
 
+  async getGenericNotifications(
+    limit: number = 5,
+  ): Promise<{ id: number; message: string; created_at: string }[]> {
+    const res = await this.db
+      .prepare(
+        "SELECT id, message, created_at FROM notifications ORDER BY created_at DESC LIMIT ?",
+      )
+      .bind(limit)
+      .all<{ id: number; message: string; created_at: string }>();
+    return res.results;
+  }
+
   static async dispatch(
     env: CoreEnv,
     session: EphemeralState,

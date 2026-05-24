@@ -59,6 +59,22 @@ export class TicketCreator {
       return { success: false };
     }
 
+    // Insert generic notification for the dashboard/admin bot
+    try {
+      await this.db
+        .prepare(
+          "INSERT INTO notifications (appointment_id, type, message) " +
+            "SELECT id, 'appointment_created', ? FROM tickets WHERE ticket_id = ?",
+        )
+        .bind(
+          `Nueva cita creada: ${s.servicio_solicitado} para ${s.vehiculo_tipo} el ${s.fecha_cita} a las ${s.hora_cita}`,
+          ticket_id,
+        )
+        .run();
+    } catch (e) {
+      console.error("[TicketCreator] Failed to insert notification:", e);
+    }
+
     return { success: true, ticket_id };
   }
 
