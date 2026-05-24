@@ -107,7 +107,17 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
 
     <script nonce="__NONCE__">
         let currentData = [];
+        const urlToken = new URLSearchParams(window.location.search).get('token');
         function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+
+        function buildApiUrl(path) {
+            const params = new URLSearchParams();
+            const status = document.getElementById('status-filter').value;
+            if (urlToken) params.set('token', urlToken);
+            if (status) params.set('status', status);
+            const qs = params.toString();
+            return path + (qs ? '?' + qs : '');
+        }
 
         function updateSummary(data) {
             const summary = document.getElementById('summary-container');
@@ -135,9 +145,8 @@ export const CALENDAR_HTML = `<!DOCTYPE html>
 
         async function fetchAppointments() {
             const container = document.getElementById('appointments-container');
-            const status = document.getElementById('status-filter').value;
             try {
-                const res = await fetch('/api/appointments' + (status ? '?status=' + status : ''));
+                const res = await fetch(buildApiUrl('/api/appointments'), { credentials: 'include' });
                 if (!res.ok) throw new Error('No autorizado');
                 const data = await res.json();
                 currentData = data;
