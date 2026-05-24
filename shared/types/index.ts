@@ -56,6 +56,7 @@ export interface CoreEnv {
   FRONTEND_BOT_INFO?: string;
   BACKEND_BOT_INFO?: string;
   WORKER_URL?: string;
+  DASHBOARD_URL?: string;
   TALLER_LATITUD?: string;
   TALLER_LONGITUD?: string;
   TALLER_MAPS_URL?: string;

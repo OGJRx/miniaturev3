@@ -14,6 +14,10 @@ compatibility_flags = ["nodejs_compat"]
 AI_MODEL_NAME = "gemini-3.1-flash-lite"
 BORG_VERSION = "9.7.0-TITANIUM"
 
+# Dashboard & Worker URLs (public endpoints)
+DASHBOARD_URL = "https://borg-dashboard.pages.dev"
+WORKER_URL = "https://borg-core-worker.marketceogjr.workers.dev"
+
 # WhatsApp Config
 WHATSAPP_API_VERSION = "v25.0"
 # NOTE: WHATSAPP_VERIFY_TOKEN is visible in Cloudflare Workers logs during webhook validation challenges.

@@ -70,9 +70,9 @@ export class AdminNotificationService {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
 
-    const workerUrl =
-      env.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
-    const dashboardUrl = `${workerUrl}/calendar?token=${env.BORG_SECRET_KEY}`;
+    const dashboardBaseUrl =
+      env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    const dashboardUrl = `${dashboardBaseUrl}?token=${env.BORG_SECRET_KEY}`;
 
     const notifBody =
       `🔔 <b>Nueva Cita Confirmada</b>\n\n` +

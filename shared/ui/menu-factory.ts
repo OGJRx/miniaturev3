@@ -3,8 +3,14 @@ import { buildCallback } from "../security";
 import { CoreEnv } from "../types";
 
 export class MenuFactory {
-  static async buildAdminMainMenu(secret: string, _env: CoreEnv) {
+  static async buildAdminMainMenu(secret: string, env: CoreEnv) {
+    const dashboardBaseUrl =
+      env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    const dashboardUrl = `${dashboardBaseUrl}?token=${secret}`;
+
     return new InlineKeyboard()
+      .url("🌐 Dashboard Web", dashboardUrl)
+      .row()
       .text("📊 Citas", await buildCallback("adm_appts", "0", secret))
       .row()
       .text("🤖 IA Features", await buildCallback("adm_ia", "0", secret))

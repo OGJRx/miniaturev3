@@ -44,14 +44,12 @@ type Handler = (
 
 const routes = new Map<string, Handler>();
 
-const CORS_ALLOWED_ORIGINS = [
-  "https://borg-dashboard.pages.dev",
-  "https://borg-core-worker.marketceogjr.workers.dev",
-];
-
-function corsHeaders(request: Request): Record<string, string> | null {
+function corsHeaders(request: Request, env?: CoreEnv): Record<string, string> | null {
   const origin = request.headers.get("Origin");
-  if (origin && CORS_ALLOWED_ORIGINS.includes(origin)) {
+  const dashboardUrl = env?.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+  const workerUrl = env?.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
+  const allowedOrigins = [dashboardUrl, workerUrl];
+  if (origin && allowedOrigins.includes(origin)) {
     return {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -72,7 +70,7 @@ async function routeRequest(
 
   // CORS preflight for API routes
   if (isApi && req.method === "OPTIONS") {
-    const cors = corsHeaders(req);
+    const cors = corsHeaders(req, env);
     if (cors) return new Response(null, { status: 204, headers: cors });
   }
 
@@ -103,7 +101,7 @@ async function routeRequest(
     if (res) {
       // Inject CORS headers on middleware responses (e.g., 401) for API routes
       if (isApi) {
-        const cors = corsHeaders(req);
+        const cors = corsHeaders(req, env);
         if (cors) {
           for (const [k, v] of Object.entries(cors)) {
             res.headers.set(k, v);
@@ -125,7 +123,7 @@ async function routeRequest(
 
   // CORS headers for API responses
   if (isApi) {
-    const cors = corsHeaders(req);
+    const cors = corsHeaders(req, env);
     if (cors) {
       for (const [k, v] of Object.entries(cors)) {
         response.headers.set(k, v);
@@ -615,7 +613,8 @@ routes.set("/calendar", async (req, env, _ctx) => {
   // Preserve token query param when redirecting to Pages dashboard
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
-  const redirectUrl = new URL("https://borg-dashboard.pages.dev/");
+  const dashboardBaseUrl = env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+  const redirectUrl = new URL(dashboardBaseUrl + "/");
   if (token) redirectUrl.searchParams.set("token", token);
   return Response.redirect(redirectUrl.toString(), 302);
 });
