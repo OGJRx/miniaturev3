@@ -24,6 +24,7 @@ import { AGENT_PROMPTS, MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
 import { ObdLookupService } from "../../shared/obd-lookup";
 import { BookingOrchestrator } from "./booking-orchestrator";
 import { handleApiAppointments } from "./routes/appointments";
+import { handleApiNotifications } from "./routes/api-notifications";
 import { handleWhatsAppWebhook } from "./routes/webhook-whatsapp";
 import { SeoService } from "../../shared/services/seo-service";
 import { IaQueueService } from "../../shared/services/ia-queue";
@@ -43,12 +44,38 @@ type Handler = (
 
 const routes = new Map<string, Handler>();
 
+const CORS_ALLOWED_ORIGINS = [
+  "https://borg-dashboard.pages.dev",
+  "https://borg-core-worker.marketceogjr.workers.dev",
+];
+
+function corsHeaders(request: Request): Record<string, string> | null {
+  const origin = request.headers.get("Origin");
+  if (origin && CORS_ALLOWED_ORIGINS.includes(origin)) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Vary": "Origin",
+    };
+  }
+  return null;
+}
+
 async function routeRequest(
   req: Request,
   env: CoreEnv,
   ctx: BorgExecutionContext,
 ): Promise<Response> {
   const url = new URL(req.url);
+  const isApi = url.pathname.startsWith("/api/");
+
+  // CORS preflight for API routes
+  if (isApi && req.method === "OPTIONS") {
+    const cors = corsHeaders(req);
+    if (cors) return new Response(null, { status: 204, headers: cors });
+  }
+
   const handler = routes.get(url.pathname);
 
   if (!handler) {
@@ -66,14 +93,25 @@ async function routeRequest(
   ) {
     middlewares.push(webhookValidator);
   }
-  if (["/calendar", "/admin", "/api/appointments"].includes(url.pathname))
+  if (["/calendar", "/admin", "/api/appointments", "/api/notifications"].includes(url.pathname))
     middlewares.push(calendarAuthMiddleware);
   if (url.pathname.includes("/backend") || url.pathname.includes("/admin"))
     middlewares.push(adminAuthGuard);
 
   for (const mw of middlewares) {
     const res = await mw(req, env, ctx);
-    if (res) return res;
+    if (res) {
+      // Inject CORS headers on middleware responses (e.g., 401) for API routes
+      if (isApi) {
+        const cors = corsHeaders(req);
+        if (cors) {
+          for (const [k, v] of Object.entries(cors)) {
+            res.headers.set(k, v);
+          }
+        }
+      }
+      return res;
+    }
   }
 
   const response = await handler(req, env, ctx);
@@ -84,6 +122,16 @@ async function routeRequest(
     "max-age=31536000; includeSubDomains",
   );
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // CORS headers for API responses
+  if (isApi) {
+    const cors = corsHeaders(req);
+    if (cors) {
+      for (const [k, v] of Object.entries(cors)) {
+        response.headers.set(k, v);
+      }
+    }
+  }
 
   const isHtml = response.headers.get("Content-Type")?.includes("text/html");
   if (!isHtml) {
@@ -519,7 +567,7 @@ async function handleCalendarMiniApp(
 
   const nonce = crypto.randomUUID();
   const html = CALENDAR_HTML
-    .replace("__NONCE__", nonce)
+    .replaceAll("__NONCE__", nonce)
     .replace("__APPOINTMENTS_DATA__", appointmentsJson);
 
   const response = new Response(html, {
@@ -563,8 +611,16 @@ routes.set("/webhook/backend", async (req, env, ctx) => {
   return new Response("OK");
 });
 
-routes.set("/calendar", handleCalendarMiniApp);
+routes.set("/calendar", async (req, env, _ctx) => {
+  // Preserve token query param when redirecting to Pages dashboard
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token");
+  const redirectUrl = new URL("https://borg-dashboard.pages.dev/");
+  if (token) redirectUrl.searchParams.set("token", token);
+  return Response.redirect(redirectUrl.toString(), 302);
+});
 routes.set("/api/appointments", handleApiAppointments);
+routes.set("/api/notifications", handleApiNotifications);
 routes.set("/webhook/whatsapp", handleWhatsAppWebhook);
 
 export default {
