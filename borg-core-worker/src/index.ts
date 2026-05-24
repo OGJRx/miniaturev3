@@ -18,6 +18,7 @@ import {
 import { UiManager } from "../../shared/ui/ui-manager";
 import { ObdSessionService } from "../../shared/services/obd-session";
 import { MaintenanceService } from "../../shared/services/maintenance-service";
+import { AdminNotificationService } from "../../shared/services/admin-notification";
 import { AgentFactory } from "../../shared/services/agent-factory";
 import { AGENT_PROMPTS, MOTOR_HELP_MESSAGE } from "../../shared/ui/prompts";
 import { ObdLookupService } from "../../shared/obd-lookup";
@@ -212,7 +213,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
       }
 
       if (ctx.message?.text === "🔔 Notificaciones") {
-        return await ctx.reply("🔔 Módulo de Notificaciones en desarrollo.");
+        return await handleAdminNotifications(ctx);
       }
 
       await handleBackendTextMessage(ctx);
@@ -302,10 +303,7 @@ async function handleAdminActions(
       );
       break;
     case "adm_notifs":
-      await UiManager.safeEditOrReply(
-        ctx,
-        "🔔 Módulo de Notificaciones en desarrollo.",
-      );
+      await handleAdminNotifications(ctx);
       break;
   }
   await ctx.answerCallbackQuery().catch(() => {});
@@ -369,6 +367,40 @@ async function handleAdminToday(ctx: FrontendContext, secret: string) {
   });
 }
 
+async function handleAdminNotifications(ctx: FrontendContext) {
+  const service = new AdminNotificationService(ctx.env.DB);
+  const adminNotifs = await service.getRecentNotifications(5);
+  const genericNotifs = await service.getGenericNotifications(5);
+
+  let msg = "🔔 <b>Panel de Notificaciones</b>\n\n";
+
+  msg += "📋 <b>Citas Recientes:</b>\n";
+  if (adminNotifs.length === 0) {
+    msg += "📭 No hay citas nuevas.\n";
+  } else {
+    adminNotifs.forEach((n) => {
+      msg += `📍 <code>${n.ticket_id}</code> | ${n.fecha_cita} ${n.hora_cita} | ${n.vehiculo_tipo}\n`;
+    });
+  }
+
+  msg += "\n📢 <b>Eventos del Sistema:</b>\n";
+  if (genericNotifs.length === 0) {
+    msg += "📭 No hay eventos recientes.\n";
+  } else {
+    genericNotifs.forEach((n) => {
+      msg += `🔹 ${n.message}\n`;
+    });
+  }
+
+  await UiManager.safeEditOrReply(ctx, msg, {
+    parse_mode: "HTML",
+    reply_markup: await MenuFactory.buildAdminMainMenu(
+      ctx.env.BORG_SECRET_KEY,
+      ctx.env,
+    ),
+  });
+}
+
 async function handleAdminUpcoming(ctx: FrontendContext, secret: string) {
   const today = todayVET();
   const results = await ctx.env.DB.prepare(
@@ -427,7 +459,7 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
 
     if (obdActive) {
       const results = await ObdLookupService.getEnrichmentResults(
-        ctx.env.DB,
+        ctx.env.OBD_DB,
         text,
       );
       prompt = ObdLookupService.enrichPrompt(prompt, results);

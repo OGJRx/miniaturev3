@@ -203,12 +203,20 @@ export async function parseCallback(
     return { action, value, expired: false, valid: false };
   }
 
+  const ageMinutes =
+    Math.floor((Date.now() / 1000 - BORG_EPOCH) / 60) - parseInt(ts36, 36);
+  const expired = ageMinutes > 5;
+
+  if (expired) {
+    console.warn(
+      `[parseCallback] Expired callback: action=${action}, age=${ageMinutes}min`,
+    );
+  }
+
   return {
     action,
     value,
-    expired:
-      Math.floor((Date.now() / 1000 - BORG_EPOCH) / 60) - parseInt(ts36, 36) >
-      1440,
+    expired,
     valid: true,
   };
 }

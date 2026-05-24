@@ -21,7 +21,7 @@ describe("Calendar Template XSS Protection", () => {
   });
 
   it("escapes error message", () => {
-    expect(CALENDAR_HTML).toContain("esc(err.message)");
+    expect(CALENDAR_HTML).toContain("esc(errorMsg)");
   });
 
   it("does not use unescaped appt data in innerHTML", () => {

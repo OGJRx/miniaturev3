@@ -49,6 +49,7 @@ export interface CoreEnv {
   FRONTEND_BOT_TOKEN: string;
   BACKEND_BOT_TOKEN: string;
   DB: D1Database;
+  OBD_DB: D1Database;
   BORG_SECRET_KEY: string;
   GEMINI_API_KEY: string;
   AI_MODEL_NAME: string;

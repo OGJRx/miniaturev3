@@ -26,6 +26,11 @@ database_name = "borg"
 database_id = "f93be66c-cfd1-4f03-a698-57d5938ac156"
 migrations_dir = "migrations"
 
+[[d1_databases]]
+binding = "OBD_DB"
+database_name = "borg-obd-db"
+database_id = "5b34038c-b2e0-45db-af6f-cf7c5fc89975"
+
 [triggers]
 crons = [
   "*/10 * * * *"    # Master Cron (Unified Dispatcher)
