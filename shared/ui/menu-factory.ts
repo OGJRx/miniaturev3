@@ -8,8 +8,11 @@ export class MenuFactory {
       env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
     const dashboardUrl = `${dashboardBaseUrl}?token=${secret}`;
 
+    const seoUrl = `${dashboardBaseUrl}/borg.html?token=${secret}`;
+
     return new InlineKeyboard()
       .url("🌐 Dashboard Web", dashboardUrl)
+      .url("🧠 SEO Maestro", seoUrl)
       .row()
       .text("📊 Citas", await buildCallback("adm_appts", "0", secret))
       .row()

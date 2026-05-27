@@ -622,6 +622,16 @@ routes.set("/api/appointments", handleApiAppointments);
 routes.set("/api/notifications", handleApiNotifications);
 routes.set("/webhook/whatsapp", handleWhatsAppWebhook);
 
+routes.set("/seo", async (req, env, _ctx) => {
+  const url = new URL(req.url);
+  const token = url.searchParams.get("token");
+  const dashboardBaseUrl =
+    env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+  const redirectUrl = new URL(dashboardBaseUrl + "/borg.html");
+  if (token) redirectUrl.searchParams.set("token", token);
+  return Response.redirect(redirectUrl.toString(), 302);
+});
+
 export default {
   async fetch(
     req: Request,
