@@ -117,7 +117,8 @@ export class WhatsAppApi {
       throw new Error("WhatsApp circuit breaker is open");
     }
 
-    if (!(await this.checkRateLimit(to))) return { error: "Rate limit exceeded" };
+    if (!(await this.checkRateLimit(to)))
+      return { error: "Rate limit exceeded" };
 
     return await this.postToWhatsApp({
       messaging_product: "whatsapp",
@@ -141,7 +142,10 @@ export class WhatsAppApi {
     to: string,
     bodyText: string,
     buttonLabel: string,
-    sections: { title: string; rows: { id: string; title: string; description?: string }[] }[],
+    sections: {
+      title: string;
+      rows: { id: string; title: string; description?: string }[];
+    }[],
   ): Promise<unknown> {
     if (
       await TitaniumCircuitBreaker.shouldBlock(
@@ -152,7 +156,8 @@ export class WhatsAppApi {
       throw new Error("WhatsApp circuit breaker is open");
     }
 
-    if (!(await this.checkRateLimit(to))) return { error: "Rate limit exceeded" };
+    if (!(await this.checkRateLimit(to)))
+      return { error: "Rate limit exceeded" };
 
     return await this.postToWhatsApp({
       messaging_product: "whatsapp",

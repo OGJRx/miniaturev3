@@ -67,15 +67,30 @@ export const WHATSAPP_RENDER_CONFIG = {
     type: "list",
     buttonLabel: "Ver Vehículos",
     sections: [
-      { title: "🚗 Livianos", rows: ["Sedán", "Coupé", "Hatchback", "Carro", "Moto"] },
-      { title: "🚛 Pesados", rows: ["SUV", "Pickup", "Van", "Camioneta", "Camión"] },
+      {
+        title: "🚗 Livianos",
+        rows: ["Sedán", "Coupé", "Hatchback", "Carro", "Moto"],
+      },
+      {
+        title: "🚛 Pesados",
+        rows: ["SUV", "Pickup", "Van", "Camioneta", "Camión"],
+      },
     ],
   },
   STEP_2: {
     type: "list",
     buttonLabel: "Ver Motores",
     sections: [
-      { title: "⚙️ Tecnologías", rows: ["Combustión", "Híbrido", "Eléctrico", "V8 / High-Performance", "HELP"] },
+      {
+        title: "⚙️ Tecnologías",
+        rows: [
+          "Combustión",
+          "Híbrido",
+          "Eléctrico",
+          "V8 / High-Performance",
+          "HELP",
+        ],
+      },
     ],
   },
   STEP_3: { type: "button" }, // Eras: max 3
@@ -83,15 +98,40 @@ export const WHATSAPP_RENDER_CONFIG = {
     type: "list",
     buttonLabel: "Seleccionar KM",
     sections: [
-      { title: "📍 Bajo kilometraje", rows: ["0 - 5.000 km", "5.000 - 10.000 km", "10.000 - 20.000 km", "20.000 - 50.000 km"] },
-      { title: "📍 Alto kilometraje", rows: ["50.000 - 100.000 km", "100.000 - 150.000 km", "150.000 - 200.000 km", "+200.000 km"] },
+      {
+        title: "📍 Bajo kilometraje",
+        rows: [
+          "0 - 5.000 km",
+          "5.000 - 10.000 km",
+          "10.000 - 20.000 km",
+          "20.000 - 50.000 km",
+        ],
+      },
+      {
+        title: "📍 Alto kilometraje",
+        rows: [
+          "50.000 - 100.000 km",
+          "100.000 - 150.000 km",
+          "150.000 - 200.000 km",
+          "+200.000 km",
+        ],
+      },
     ],
   },
   STEP_5: {
     type: "list",
     buttonLabel: "Ver Servicios",
     sections: [
-      { title: "🛠️ Servicios", rows: ["Diagnóstico", "Mantenimiento", "Reparación/Revisión", "Limpieza de Inyectores", "Escáner de Vehículo"] },
+      {
+        title: "🛠️ Servicios",
+        rows: [
+          "Diagnóstico",
+          "Mantenimiento",
+          "Reparación/Revisión",
+          "Limpieza de Inyectores",
+          "Escáner de Vehículo",
+        ],
+      },
     ],
   },
   STEP_6: { type: "list", buttonLabel: "Ver Fechas" },

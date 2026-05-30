@@ -59,15 +59,16 @@ Agent: Jules (Auditor Jefe de Deuda Técnica)
 Task: Neutralización de Migración 0004 (Cleanup Fallido) + Restauración de Integridad
 
 Work Log:
+
 - Identificado colapso en despliegue v9.7.0-TITANIUM debido a migración 0004 defectuosa.
 - Neutralización total de `0004_cleanup_dead_infrastructure.sql`:
-    - Eliminados comandos `DROP TABLE` para `vehicles`, `predictive_alerts`, `maintenance_rules` y `agent_conversations` (todas con uso activo o estructural).
-    - Eliminado `ALTER TABLE sessions DROP COLUMN bay_number` (columna inexistente en baseline 0001).
-    - Eliminada creación redundante de `idx_tickets_fecha_estado` (ya presente en 0002).
+  - Eliminados comandos `DROP TABLE` para `vehicles`, `predictive_alerts`, `maintenance_rules` y `agent_conversations` (todas con uso activo o estructural).
+  - Eliminado `ALTER TABLE sessions DROP COLUMN bay_number` (columna inexistente en baseline 0001).
+  - Eliminada creación redundante de `idx_tickets_fecha_estado` (ya presente en 0002).
 - Corregida inserción en `business_metrics` usando el esquema real (`metric_key`, `metric_value`) y registrando la neutralización.
 - Validación técnica:
-    - `npx wrangler d1 migrations apply borg --local` -> ✅ Éxito (4/4 aplicadas).
-    - `npm test` -> ✅ Éxito (56/56 pasan).
+  - `npx wrangler d1 migrations apply borg --local` -> ✅ Éxito (4/4 aplicadas).
+  - `npm test` -> ✅ Éxito (56/56 pasan).
 - Auditoría de esquema: Confirmado que `bay_number` no existe y que las tablas preservadas tienen referencias vivas en `shared/`.
 
 Estado: ✅ PIPELINE DESBLOQUEADO. Esquema restaurado y consistente.
@@ -85,7 +86,7 @@ Work Log:
 - Entropy Check: ✅ success
 - Deploy Core: ✅ success
   - D1 Binding: env.DB (borg) – confirmado
-  - Cron Trigger: */10 * * * * – activado en nuevo worker
+  - Cron Trigger: _/10 _ \* \* \* – activado en nuevo worker
   - New Version ID: 24f905ca-0c8f-4383-a681-3aee1b938a2b
   - Secrets sincronizados: 12/12
   - Webhooks activados: ✅ Telegram (frontend + backend)
@@ -94,6 +95,7 @@ Work Log:
 - DB `borgptron-db` → `borg`: migración de código completada, infraestructura separada
 
 Final Status: ✅ INFRASTRUCTURE MIGRATION FULLY OPERATIONAL
+
 - Nuevo worker con DB `borg` en producción
 - Cron migrado al nuevo deployment
 - Sin referencias residuales a `borgptron-db` en código

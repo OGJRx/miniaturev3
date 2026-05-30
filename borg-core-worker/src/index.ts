@@ -32,7 +32,6 @@ import {
   getVenezuelaTimeParts as getVETParts,
   todayVET,
 } from "../../shared/ui/timezone";
-import { CALENDAR_HTML } from "./calendar-template";
 
 type FrontendContext = BorgContext<CoreEnv>;
 type Handler = (
@@ -43,17 +42,21 @@ type Handler = (
 
 const routes = new Map<string, Handler>();
 
-function corsHeaders(request: Request, env?: CoreEnv): Record<string, string> | null {
+function corsHeaders(
+  request: Request,
+  env?: CoreEnv,
+): Record<string, string> | null {
   const origin = request.headers.get("Origin");
   const dashboardUrl = env?.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
-  const workerUrl = env?.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
+  const workerUrl =
+    env?.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
   const allowedOrigins = [dashboardUrl, workerUrl];
   if (origin && allowedOrigins.includes(origin)) {
     return {
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Methods": "GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Vary": "Origin",
+      Vary: "Origin",
     };
   }
   return null;
@@ -90,7 +93,11 @@ async function routeRequest(
   ) {
     middlewares.push(webhookValidator);
   }
-  if (["/calendar", "/admin", "/api/appointments", "/api/notifications"].includes(url.pathname))
+  if (
+    ["/calendar", "/admin", "/api/appointments", "/api/notifications"].includes(
+      url.pathname,
+    )
+  )
     middlewares.push(calendarAuthMiddleware);
   if (url.pathname.includes("/backend") || url.pathname.includes("/admin"))
     middlewares.push(adminAuthGuard);
@@ -568,7 +575,8 @@ routes.set("/calendar", async (req, env, _ctx) => {
   // Preserve token query param when redirecting to Pages dashboard
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
-  const dashboardBaseUrl = env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+  const dashboardBaseUrl =
+    env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
   const redirectUrl = new URL(dashboardBaseUrl + "/");
   if (token) redirectUrl.searchParams.set("token", token);
   return Response.redirect(redirectUrl.toString(), 302);

@@ -41,7 +41,9 @@ describe("Calendar Template XSS Protection", () => {
     // The original code had join('\n') inside a TS template literal,
     // which became a literal newline — killing the entire script block.
     // Verify no raw \n inside single quotes (except in CSS which is fine).
-    const scriptMatch = CALENDAR_HTML.match(/<script nonce="__NONCE__">([\s\S]*)<\/script>/);
+    const scriptMatch = CALENDAR_HTML.match(
+      /<script nonce="__NONCE__">([\s\S]*)<\/script>/,
+    );
     if (scriptMatch) {
       const script = scriptMatch[1];
       // No template literal backticks in client-side JS
