@@ -83,6 +83,27 @@ export async function handleWhatsAppWebhook(
                 } catch (err: unknown) {
                   console.error(`[WhatsAppWebhook] Orchestrator error:`, err);
                 }
+              } else if (msg.type === "interactive" && msg.interactive) {
+                try {
+                  let replyId: string | undefined;
+                  if (msg.interactive.type === "button_reply") {
+                    replyId = msg.interactive.button_reply?.id;
+                  } else if (msg.interactive.type === "list_reply") {
+                    replyId = msg.interactive.list_reply?.id;
+                  }
+
+                  if (replyId) {
+                    await orchestrator.handleInteractiveReply(
+                      msg.from,
+                      replyId,
+                    );
+                  }
+                } catch (err: unknown) {
+                  console.error(
+                    `[WhatsAppWebhook] Interactive reply error:`,
+                    err,
+                  );
+                }
               }
             }
           }

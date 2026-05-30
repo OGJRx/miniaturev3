@@ -53,7 +53,6 @@ export class IaQueueService {
           for (const fragment of fragments) {
             await api.sendMessage(job.telegram_chat_id, fragment, {
               reply_to_message_id: job.message_id,
-              parse_mode: "HTML",
             });
           }
         } else {
