@@ -7,7 +7,11 @@ export class BorgLogger {
     private db?: D1Database,
     private traceId?: string,
     private exec?: BorgExecutionContext,
-  ) {}
+  ) {
+    if (!this.traceId) {
+      this.traceId = "gen-" + Math.random().toString(36).substring(2, 9);
+    }
+  }
   setTraceId(traceId: string) {
     this.traceId = traceId;
   }

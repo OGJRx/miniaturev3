@@ -285,7 +285,10 @@ export class BookingCoreService {
     }
     return {
       status: "PROMPT",
-      message: "📅 <b>Selecciona una fecha:</b>",
+      message:
+        "📅 <b>Selecciona una fecha de servicio:</b>\n\n" +
+        "La gestión de bahía requiere una asignación precisa para garantizar la eficiencia operativa de nuestro personal especializado. " +
+        "Selecciona una fecha hábil para reservar tu slot de atención. El sistema validará la disponibilidad en tiempo real.",
       options,
     };
   }
@@ -318,14 +321,18 @@ export class BookingCoreService {
         return {
           status: "PROMPT",
           message:
-            "📅 <b>Selecciona el rango de año:</b>\n\n" +
-            "Elige el periodo de fabricación aproximado de tu vehículo.",
+            "📅 <b>Selecciona el periodo de fabricación:</b>\n\n" +
+            "El rango de año permite al equipo técnico preparar los protocolos de diagnóstico específicos para tu línea de ensamblaje. " +
+            "Esta información es crítica para determinar la compatibilidad de herramientas y software de escaneo. Elige el intervalo correspondiente.",
           options: VEHICLE_OPTIONS.ERAS.map((e) => ({ label: e, value: e })),
         };
       case 4:
         return {
           status: "PROMPT",
-          message: "📟 <b>Selecciona el rango de kilometraje:</b>",
+          message:
+            "📟 <b>Selecciona el rango de kilometraje:</b>\n\n" +
+            "El registro del odómetro es fundamental para establecer el intervalo de mantenimiento preventivo y evaluar el desgaste de componentes críticos. " +
+            "Indica el rango actual para personalizar tu plan de servicio y proyectar la vida útil de fluidos.",
           options: KILOMETRAJE_RANGES.map((r) => ({
             label: r.label,
             value: r.value.toString(),
@@ -361,7 +368,10 @@ export class BookingCoreService {
         }
         return {
           status: "PROMPT",
-          message: `⏰ <b>Horas disponibles para ${s.fecha_cita}:</b>`,
+          message:
+            `⏰ <b>Define tu ventana de atención para ${s.fecha_cita}:</b>\n\n` +
+            "Respetar el horario asignado permite optimizar el flujo de trabajo en la bahía y reducir los tiempos de diagnóstico técnico inicial. " +
+            "Elige un slot de servicio disponible para confirmar tu cita.",
           options: available.map((sl) => ({ label: sl.hora, value: sl.hora })),
         };
       }

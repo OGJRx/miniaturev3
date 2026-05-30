@@ -70,8 +70,7 @@ export class AdminNotificationService {
     const backendApi = TelegramApiFactory.create(env, "backend");
     const adminIds = AdminAuthService.parseAdminIds(env);
 
-    const dashboardBaseUrl =
-      env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    const dashboardBaseUrl = env.DASHBOARD_URL || "https://win365-1.pages.dev";
 
     let successCount = 0;
     for (const adminId of adminIds) {

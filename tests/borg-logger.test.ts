@@ -38,7 +38,7 @@ describe("BorgLogger", () => {
       "ERROR",
       "oops",
       JSON.stringify({ action: "test-sub", stack: "stack-trace" }),
-      null,
+      expect.stringMatching(/^gen-/),
     );
   });
 });

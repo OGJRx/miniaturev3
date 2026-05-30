@@ -68,6 +68,7 @@ export interface CoreEnv {
   RETENTION_LOGS_DAYS?: string;
   RETENTION_UPDATES_HOURS?: string;
   RETENTION_WHATSAPP_DAYS?: string;
+  BORG_TRACE_ID?: string;
 }
 
 export interface UbicacionTaller {
