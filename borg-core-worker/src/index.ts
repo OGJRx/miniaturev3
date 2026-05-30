@@ -47,9 +47,9 @@ function corsHeaders(
   env?: CoreEnv,
 ): Record<string, string> | null {
   const origin = request.headers.get("Origin");
-  const dashboardUrl = env?.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+  const dashboardUrl = env?.DASHBOARD_URL || "https://win365-1.pages.dev";
   const workerUrl =
-    env?.WORKER_URL || "https://borg-core-worker.marketceogjr.workers.dev";
+    env?.WORKER_URL || "https://4agentsonline.marketceogjr.workers.dev";
   const allowedOrigins = [dashboardUrl, workerUrl];
   if (origin && allowedOrigins.includes(origin)) {
     return {
@@ -576,7 +576,7 @@ routes.set("/calendar", async (req, env, _ctx) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   const dashboardBaseUrl =
-    env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    env.DASHBOARD_URL || "https://win365-1.pages.dev";
   const redirectUrl = new URL(dashboardBaseUrl + "/");
   if (token) redirectUrl.searchParams.set("token", token);
   return Response.redirect(redirectUrl.toString(), 302);
@@ -589,7 +589,7 @@ routes.set("/seo", async (req, env, _ctx) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   const dashboardBaseUrl =
-    env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    env.DASHBOARD_URL || "https://win365-1.pages.dev";
   const redirectUrl = new URL(dashboardBaseUrl + "/borg.html");
   if (token) redirectUrl.searchParams.set("token", token);
   return Response.redirect(redirectUrl.toString(), 302);

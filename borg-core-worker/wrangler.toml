@@ -1,4 +1,4 @@
-name = "borg-core-worker"
+name = "4agentsonline"
 main = "src/index.ts"
 compatibility_date = "2025-01-24"
 compatibility_flags = ["nodejs_compat"]
@@ -15,8 +15,8 @@ AI_MODEL_NAME = "gemini-3.1-flash-lite"
 BORG_VERSION = "9.7.0-TITANIUM"
 
 # Dashboard & Worker URLs (public endpoints)
-DASHBOARD_URL = "https://borg-dashboard.pages.dev"
-WORKER_URL = "https://borg-core-worker.marketceogjr.workers.dev"
+DASHBOARD_URL = "https://win365-1.pages.dev"
+WORKER_URL = "https://4agentsonline.marketceogjr.workers.dev"
 
 # WhatsApp Config
 WHATSAPP_API_VERSION = "v25.0"

@@ -149,21 +149,27 @@ CREATE TABLE IF NOT EXISTS obd_codes (
     description TEXT NOT NULL,
     source TEXT NOT NULL,
     code_type TEXT,
+    category TEXT DEFAULT '',
+    subcategory TEXT DEFAULT '',
     severity TEXT CHECK(severity IN ('BAJA', 'MEDIA', 'ALTA', 'CRITICA')) DEFAULT 'MEDIA',
     extra_metadata TEXT,
+    raw_hex TEXT,
+    raw_decimal INTEGER,
+    sources_available TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE VIRTUAL TABLE IF NOT EXISTS obd_codes_fts USING fts5(
     code,
     description,
-    code_type,
+    category,
+    subcategory,
     content='obd_codes',
     content_rowid='id'
 );
 
 CREATE TRIGGER IF NOT EXISTS obd_codes_ai AFTER INSERT ON obd_codes BEGIN
-  INSERT INTO obd_codes_fts(rowid, code, description, code_type) VALUES (new.id, new.code, new.description, new.code_type);
+  INSERT INTO obd_codes_fts(rowid, code, description, category, subcategory) VALUES (new.id, new.code, new.description, new.category, new.subcategory);
 END;
 
 -- 4. TITANIUM EXTENSIONS (V9.7.0)

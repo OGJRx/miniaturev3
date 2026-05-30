@@ -33,7 +33,7 @@ fi
 
 if [ -z "$CALLBACK_URL" ]; then
     echo "⚠️  WHATSAPP_CALLBACK_URL no definida. Usando default:"
-    CALLBACK_URL="https://borg-core-worker.marketceogjr.workers.dev/webhook/whatsapp"
+    CALLBACK_URL="https://4agentsonline.marketceogjr.workers.dev/webhook/whatsapp"
     echo "   $CALLBACK_URL"
     echo "   (usa export WHATSAPP_CALLBACK_URL=<url> para personalizar)"
 fi
