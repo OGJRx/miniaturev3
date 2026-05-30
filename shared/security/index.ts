@@ -24,10 +24,20 @@ export const calendarAuthMiddleware: BorgMiddleware = async (request, env) => {
   const token = url.searchParams.get("token");
 
   if (token) {
+    // Primary auth: Telegram admin user ID as token
+    if (AdminAuthService.isAdmin(token, env)) {
+      return null;
+    }
+    // Fallback: legacy BORG_SECRET_KEY (will be removed after transition)
     if (await timingSafeEqual(token, env.BORG_SECRET_KEY)) {
+      console.warn(
+        `[calendarAuth] Legacy BORG_SECRET_KEY token used. Migrate to admin ID token.`,
+      );
       return null;
     } else {
-      console.warn(`[calendarAuth] Token mismatch. Check BORG_SECRET_KEY.`);
+      console.warn(
+        `[calendarAuth] Token rejected. Must be a valid Telegram admin ID.`,
+      );
     }
   }
 

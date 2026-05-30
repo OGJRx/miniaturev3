@@ -3,12 +3,17 @@ import { buildCallback } from "../security";
 import { CoreEnv } from "../types";
 
 export class MenuFactory {
-  static async buildAdminMainMenu(secret: string, env: CoreEnv) {
+  /**
+   * Build admin main menu with personalized dashboard URLs using admin Telegram ID.
+   * Callback buttons still use BORG_SECRET_KEY for HMAC signing (server-side only).
+   */
+  static async buildAdminMainMenu(adminId: number, env: CoreEnv) {
     const dashboardBaseUrl =
       env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
-    const dashboardUrl = `${dashboardBaseUrl}?token=${secret}`;
+    const dashboardUrl = `${dashboardBaseUrl}?token=${adminId}`;
+    const seoUrl = `${dashboardBaseUrl}/borg.html?token=${adminId}`;
 
-    const seoUrl = `${dashboardBaseUrl}/borg.html?token=${secret}`;
+    const secret = env.BORG_SECRET_KEY;
 
     return new InlineKeyboard()
       .url("🌐 Dashboard Web", dashboardUrl)

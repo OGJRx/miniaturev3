@@ -72,22 +72,24 @@ export class AdminNotificationService {
 
     const dashboardBaseUrl =
       env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
-    const dashboardUrl = `${dashboardBaseUrl}?token=${env.BORG_SECRET_KEY}`;
-
-    const notifBody =
-      `🔔 <b>Nueva Cita Confirmada</b>\n\n` +
-      `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
-      `📱 <b>Origen:</b> ${platform === "whatsapp" ? "WhatsApp" : "Telegram"}\n` +
-      `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
-      `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
-      `📻 <b>Km:</b> ${session.kilometraje ?? "N/A"}\n` +
-      `🔧 <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
-      `📆 <b>Fecha:</b> ${escapeHtml(session.fecha_cita || "N/A")}\n` +
-      `🕐 <b>Hora:</b> ${escapeHtml(session.hora_cita || "N/A")}\n\n` +
-      `📊 <b>Dashboard:</b> <a href="${dashboardUrl}">Ver Calendario</a>`;
 
     let successCount = 0;
     for (const adminId of adminIds) {
+      // Each admin receives a personalized link with their own Telegram ID as token
+      const dashboardUrl = `${dashboardBaseUrl}?token=${adminId}`;
+
+      const notifBody =
+        `🔔 <b>Nueva Cita Confirmada</b>\n\n` +
+        `📋 <b>Ticket:</b> <code>${escapeHtml(ticketId)}</code>\n` +
+        `📱 <b>Origen:</b> ${platform === "whatsapp" ? "WhatsApp" : "Telegram"}\n` +
+        `🚗 <b>Vehículo:</b> ${escapeHtml(session.vehiculo_tipo || "N/A")} / ${escapeHtml(session.vehiculo_motor || "N/A")}\n` +
+        `📅 <b>Era:</b> ${escapeHtml(session.vehiculo_era || "N/A")}\n` +
+        `📻 <b>Km:</b> ${session.kilometraje ?? "N/A"}\n` +
+        `🔧 <b>Servicio:</b> ${escapeHtml(session.servicio_solicitado || "N/A")}\n` +
+        `📆 <b>Fecha:</b> ${escapeHtml(session.fecha_cita || "N/A")}\n` +
+        `🕐 <b>Hora:</b> ${escapeHtml(session.hora_cita || "N/A")}\n\n` +
+        `📊 <b>Dashboard:</b> <a href="${dashboardUrl}">Ver Calendario</a>`;
+
       await backendApi
         .sendMessage(adminId, notifBody, { parse_mode: "HTML" })
         .then(() => {

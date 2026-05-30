@@ -218,7 +218,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
   backendBot.command("start", async (ctx) => {
     try {
       const menu = await MenuFactory.buildAdminMainMenu(
-        ctx.env.BORG_SECRET_KEY,
+        ctx.from!.id,
         ctx.env,
       );
       await ctx.reply(ADMIN_PANEL_MESSAGE, {
@@ -249,7 +249,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
         return await ctx.reply(ADMIN_PANEL_MESSAGE, {
           parse_mode: "HTML",
           reply_markup: await MenuFactory.buildAdminMainMenu(
-            ctx.env.BORG_SECRET_KEY,
+            ctx.from!.id,
             ctx.env,
           ),
         });
@@ -324,7 +324,10 @@ async function handleAdminActions(
   switch (action) {
     case "adm_main":
       await UiManager.safeEditOrReply(ctx, ADMIN_PANEL_MESSAGE, {
-        reply_markup: await MenuFactory.buildAdminMainMenu(secret, ctx.env),
+        reply_markup: await MenuFactory.buildAdminMainMenu(
+          ctx.from!.id,
+          ctx.env,
+        ),
         parse_mode: "HTML",
       });
       break;
@@ -447,7 +450,7 @@ async function handleAdminNotifications(ctx: FrontendContext) {
   await UiManager.safeEditOrReply(ctx, msg, {
     parse_mode: "HTML",
     reply_markup: await MenuFactory.buildAdminMainMenu(
-      ctx.env.BORG_SECRET_KEY,
+      ctx.from!.id,
       ctx.env,
     ),
   });
