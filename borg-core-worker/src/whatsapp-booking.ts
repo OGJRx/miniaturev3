@@ -304,35 +304,62 @@ export class WhatsAppBookingOrchestrator {
     }
 
     if (config.type === "list") {
-      const sections: { title: string; rows: { id: string; title: string; description?: string }[] }[] = [];
+      const sections: {
+        title: string;
+        rows: { id: string; title: string; description?: string }[];
+      }[] = [];
+
       if ("sections" in config) {
-        for (const sec of (config as any).sections) {
-           const rows = step.options
-             .filter(opt => sec.rows.includes(opt.label) || (opt.value === "HELP" && sec.rows.includes("HELP")))
-             .map(opt => ({
-               id: opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
-               title: opt.label.length > 24 ? opt.label.substring(0, 21) + "..." : opt.label
-             }));
-           if (rows.length > 0) {
-             sections.push({ title: sec.title, rows });
-           }
+        interface SectionConfig {
+          readonly title: string;
+          readonly rows: readonly string[];
+        }
+        const configWithSections = config as unknown as { readonly sections: readonly SectionConfig[] };
+        for (const sec of configWithSections.sections) {
+          const rows = step.options
+            .filter(
+              (opt) => {
+                const optLabel = opt.label;
+                return sec.rows.includes(optLabel) ||
+                (opt.value === "HELP" && sec.rows.includes("HELP"));
+              }
+            )
+            .map((opt) => ({
+              id:
+                opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
+              title:
+                opt.label.length > 24
+                  ? opt.label.substring(0, 21) + "..."
+                  : opt.label,
+            }));
+          if (rows.length > 0) {
+            sections.push({ title: sec.title, rows });
+          }
         }
       } else {
         // Default section if no sections defined (e.g. dynamic dates/hours)
         sections.push({
           title: "Selecciona una opción",
-          rows: step.options.map(opt => ({
+          rows: step.options.map((opt) => ({
             id: `${action}:${opt.value}`,
-            title: opt.label.length > 24 ? opt.label.substring(0, 21) + "..." : opt.label
-          }))
+            title:
+              opt.label.length > 24
+                ? opt.label.substring(0, 21) + "..."
+                : opt.label,
+          })),
         });
+      }
+
+      let buttonLabel = "Seleccionar";
+      if ("buttonLabel" in config) {
+        buttonLabel = (config as unknown as { readonly buttonLabel: string }).buttonLabel;
       }
 
       return await this.api.sendInteractiveList(
         phoneNumber,
         cleanBody,
-        (config as any).buttonLabel || "Seleccionar",
-        sections
+        buttonLabel,
+        sections,
       );
     }
 
