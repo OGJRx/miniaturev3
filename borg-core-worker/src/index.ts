@@ -217,10 +217,7 @@ function getBackendBot(env: CoreEnv): Bot<FrontendContext> {
 
   backendBot.command("start", async (ctx) => {
     try {
-      const menu = await MenuFactory.buildAdminMainMenu(
-        ctx.from!.id,
-        ctx.env,
-      );
+      const menu = await MenuFactory.buildAdminMainMenu(ctx.from!.id, ctx.env);
       await ctx.reply(ADMIN_PANEL_MESSAGE, {
         parse_mode: "HTML",
         reply_markup: menu,
@@ -449,10 +446,7 @@ async function handleAdminNotifications(ctx: FrontendContext) {
 
   await UiManager.safeEditOrReply(ctx, msg, {
     parse_mode: "HTML",
-    reply_markup: await MenuFactory.buildAdminMainMenu(
-      ctx.from!.id,
-      ctx.env,
-    ),
+    reply_markup: await MenuFactory.buildAdminMainMenu(ctx.from!.id, ctx.env),
   });
 }
 
