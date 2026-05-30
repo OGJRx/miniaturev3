@@ -1,10 +1,22 @@
+# ═══════════════════════════════════════════════════════════════
+# 🔱 TITANIUM CORE — Unified Pipeline v9.7.0
+# ═══════════════════════════════════════════════════════════════
+#
+# DEFAULT_BRANCH: branch que se despliega a produccion.
+#   Cambiar este valor para apuntar a otra rama default.
+#   No requiere cambiar nada mas en el workflow.
+#
+# La rama definida aqui ES el repositorio principal que se
+# despliega. Cualquier otra rama solo genera PR checks.
+# ═══════════════════════════════════════════════════════════════
+
 name: 🔱 TITANIUM CORE - Unified Pipeline
 
 on:
   push:
-    branches: ["main"]
+    branches: ["borg"]
   pull_request:
-    branches: ["main"]
+    branches: ["borg"]
   workflow_dispatch:
 
 concurrency:
@@ -13,6 +25,7 @@ concurrency:
 
 env:
   NODE_VERSION: "24"
+  DEFAULT_BRANCH: "borg"
 
 jobs:
   entropy-check:
@@ -216,7 +229,6 @@ jobs:
           WA_ACCESS_TOKEN="${{ secrets.WHATSAPP_ACCESS_TOKEN }}"
           WA_PHONE_ID="${{ secrets.WHATSAPP_PHONE_NUMBER_ID }}"
 
-          # Subscribe webhook using WHATSAPP_ACCESS_TOKEN (same token the Worker uses)
           WA_SUB_RESULT=$(curl -s -X POST "https://graph.facebook.com/v25.0/${WA_PHONE_ID}/subscriptions" \
             -H "Authorization: Bearer ${WA_ACCESS_TOKEN}" \
             -H "Content-Type: application/json" \
