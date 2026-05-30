@@ -8,16 +8,13 @@ export class MenuFactory {
    * Callback buttons still use BORG_SECRET_KEY for HMAC signing (server-side only).
    */
   static async buildAdminMainMenu(adminId: number, env: CoreEnv) {
-    const dashboardBaseUrl =
-      env.DASHBOARD_URL || "https://borg-dashboard.pages.dev";
+    const dashboardBaseUrl = env.DASHBOARD_URL || "https://win365-1.pages.dev";
     const dashboardUrl = `${dashboardBaseUrl}?token=${adminId}`;
-    const seoUrl = `${dashboardBaseUrl}/borg.html?token=${adminId}`;
 
     const secret = env.BORG_SECRET_KEY;
 
     return new InlineKeyboard()
       .url("🌐 Dashboard Web", dashboardUrl)
-      .url("🧠 SEO Maestro", seoUrl)
       .row()
       .text("📊 Citas", await buildCallback("adm_appts", "0", secret))
       .row()

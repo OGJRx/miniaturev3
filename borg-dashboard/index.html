@@ -604,32 +604,8 @@
             '<div class="auth-gate">' +
             '<div class="header-icon" style="width:64px;height:64px;font-size:2rem;margin-bottom:1.5rem;">&#x1F539;</div>' +
             "<h2>Panel de Control Titanium</h2>" +
-            "<p>Este panel requiere autenticacion. Ingresa tu Telegram User ID para continuar.</p>" +
-            '<input type="text" class="auth-input" id="auth-token-input" placeholder="Tu Telegram User ID" autofocus>' +
-            '<button class="btn btn-primary" style="margin-top:0.75rem;" id="auth-submit-btn">Acceder al Panel</button>' +
+            "<p>Acceso restringido. Por favor, abre el Dashboard directamente desde el bot de Telegram para autenticarte automáticamente.</p>" +
             "</div>";
-
-          var input = document.getElementById("auth-token-input");
-          var btn = document.getElementById("auth-submit-btn");
-
-          btn.addEventListener("click", function () {
-            attemptAuth(input.value);
-          });
-          input.addEventListener("keydown", function (e) {
-            if (e.key === "Enter") attemptAuth(input.value);
-          });
-        }
-
-        function attemptAuth(token) {
-          if (!token) return;
-          setToken(token);
-
-          // Clean URL
-          var url = new URL(window.location);
-          url.searchParams.delete("token");
-          window.history.replaceState({}, "", url.pathname);
-
-          fetchAppointments();
         }
 
         // --- Dashboard ---
@@ -975,6 +951,14 @@
         // --- Init ---
         var token = getToken();
         if (token) {
+          // If token was in URL, save it and clean URL for security
+          var params = new URLSearchParams(window.location.search);
+          if (params.get("token")) {
+            setToken(params.get("token"));
+            var url = new URL(window.location);
+            url.searchParams.delete("token");
+            window.history.replaceState({}, "", url.pathname);
+          }
           renderDashboard();
         } else {
           renderAuthGate();

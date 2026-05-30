@@ -251,7 +251,11 @@ export class WhatsAppBookingOrchestrator {
         `📟 *Kilometraje:* ${session.kilometraje} km\n` +
         `🛠️ *Servicio:* ${session.servicio_solicitado}\n` +
         `🗓️ *Fecha:* ${fechaFriendly}\n` +
-        `⏰ *Hora:* ${session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A"}`;
+        `⏰ *Hora:* ${session.hora_cita ? formatHourTo12(session.hora_cita) : "N/A"}\n\n` +
+        `📌 *Protocolo de Recepción:*\n` +
+        `- Presenta tu ticket digital al llegar a la bahía.\n` +
+        `- Recomendamos llegar 10 minutos antes de tu ventana de atención.\n` +
+        `- Estacionamiento disponible para clientes en zona frontal.`;
 
       if (this.env.TALLER_MAPS_URL) {
         summary += `\n\n📍 *Ubicación:* ${this.env.TALLER_MAPS_URL}`;
@@ -268,7 +272,12 @@ export class WhatsAppBookingOrchestrator {
     }
 
     if (step.status === "CANCELLED") {
-      return await this.api.sendMessage(phoneNumber, "❌ *Cita cancelada.*");
+      return await this.api.sendMessage(
+        phoneNumber,
+        "❌ *Proceso de agendamiento interrumpido.*\n\n" +
+          "La sesión ha sido cancelada por el usuario. Puedes reiniciar el proceso de reserva en cualquier momento escribiendo *reiniciar*.\n" +
+          "Nuestro horario de atención técnica es de Lunes a Viernes, de 7:00 AM a 6:00 PM.",
+      );
     }
 
     const cleanBody = step.message

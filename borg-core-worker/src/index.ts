@@ -26,7 +26,6 @@ import { BookingOrchestrator } from "./booking-orchestrator";
 import { handleApiAppointments } from "./routes/appointments";
 import { handleApiNotifications } from "./routes/api-notifications";
 import { handleWhatsAppWebhook } from "./routes/webhook-whatsapp";
-import { SeoService } from "../../shared/services/seo-service";
 import { IaQueueService } from "../../shared/services/ia-queue";
 import {
   getVenezuelaTimeParts as getVETParts,
@@ -50,7 +49,7 @@ function corsHeaders(
   const dashboardUrl = env?.DASHBOARD_URL || "https://win365-1.pages.dev";
   const workerUrl =
     env?.WORKER_URL || "https://4agentsonline.marketceogjr.workers.dev";
-  const allowedOrigins = [dashboardUrl, workerUrl];
+  const allowedOrigins = [dashboardUrl, workerUrl, "https://web.telegram.org"];
   if (origin && allowedOrigins.includes(origin)) {
     return {
       "Access-Control-Allow-Origin": origin,
@@ -120,7 +119,7 @@ async function routeRequest(
 
   const response = await handler(req, env, ctx);
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
   response.headers.set(
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains",
@@ -141,7 +140,7 @@ async function routeRequest(
   if (!isHtml) {
     response.headers.set(
       "Content-Security-Policy",
-      "default-src 'none'; frame-ancestors 'none'",
+      "default-src 'none'; frame-ancestors 'self' https://telegram.org https://web.telegram.org",
     );
   } else {
     const nonce = response.headers.get("X-Borg-Nonce");
@@ -149,7 +148,7 @@ async function routeRequest(
     const styleSrc = nonce ? `'nonce-${nonce}'` : "'self'";
     response.headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; style-src 'self' ${styleSrc}; font-src https://fonts.gstatic.com; script-src 'self' ${scriptSrc}; connect-src 'self'; frame-ancestors 'none'`,
+      `default-src 'self'; style-src 'self' ${styleSrc}; font-src https://fonts.gstatic.com; script-src 'self' ${scriptSrc}; connect-src 'self'; frame-ancestors 'self' https://telegram.org https://web.telegram.org`,
     );
     response.headers.delete("X-Borg-Nonce");
   }
@@ -499,6 +498,7 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
   try {
     const adminId = ctx.from?.id;
     if (!adminId) return;
+    const traceId = ctx.env.BORG_TRACE_ID;
     const text = ctx.message?.text || "";
     const obdActive = await ObdSessionService.isActive(ctx.env.DB, adminId);
     const agentName = obdActive ? "OBD_DIAGNOSTICO" : "CEREBRO";
@@ -520,6 +520,8 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
       text,
       [],
       ctx.env,
+      {},
+      traceId,
     );
     if (response.success) {
       if (response.text.trim()) {
@@ -547,24 +549,28 @@ async function handleBackendTextMessage(ctx: FrontendContext) {
 routes.set("/webhook/frontend", async (req, env, ctx) => {
   const bot = getFrontendBot(env);
   const json = await req.json();
-  if (isUpdate(json))
-    await bot.handleUpdate({
+  if (isUpdate(json)) {
+    const update = {
       ...json,
-      env,
+      env: { ...env, BORG_TRACE_ID: ctx.traceId },
       executionContext: ctx,
-    } as InjectedUpdate);
+    } as InjectedUpdate;
+    await bot.handleUpdate(update);
+  }
   return new Response("OK");
 });
 
 routes.set("/webhook/backend", async (req, env, ctx) => {
   const bot = getBackendBot(env);
   const json = await req.json();
-  if (isUpdate(json))
-    await bot.handleUpdate({
+  if (isUpdate(json)) {
+    const update = {
       ...json,
-      env,
+      env: { ...env, BORG_TRACE_ID: ctx.traceId },
       executionContext: ctx,
-    } as InjectedUpdate);
+    } as InjectedUpdate;
+    await bot.handleUpdate(update);
+  }
   return new Response("OK");
 });
 
@@ -580,15 +586,6 @@ routes.set("/calendar", async (req, env, _ctx) => {
 routes.set("/api/appointments", handleApiAppointments);
 routes.set("/api/notifications", handleApiNotifications);
 routes.set("/webhook/whatsapp", handleWhatsAppWebhook);
-
-routes.set("/seo", async (req, env, _ctx) => {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
-  const dashboardBaseUrl = env.DASHBOARD_URL || "https://win365-1.pages.dev";
-  const redirectUrl = new URL(dashboardBaseUrl + "/borg.html");
-  if (token) redirectUrl.searchParams.set("token", token);
-  return Response.redirect(redirectUrl.toString(), 302);
-});
 
 export default {
   async fetch(
@@ -621,7 +618,6 @@ export default {
     };
     const db = env.DB;
 
-    await SeoService.processQueue(db, env, ctx);
     if (nowParts.hour % 6 === 0 && nowParts.minute === 0) {
       await IaQueueService.processPendingJobs(db, ctx, env);
       await MaintenanceService.runAudits(db, env);
