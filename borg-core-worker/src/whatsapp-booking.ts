@@ -6,7 +6,7 @@ import {
 import { BookingCoreService } from "../../shared/services/booking-core";
 import { WhatsAppApi } from "../../shared/whatsapp/whatsapp-api";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
-import { KILOMETRAJE_RANGES } from "../../shared/types/constants";
+import { KILOMETRAJE_RANGES, WHATSAPP_RENDER_CONFIG } from "../../shared/types/constants";
 import { formatHourTo12, formatDateFriendly } from "../../shared/ui/formatters";
 import { BorgLogger } from "../../shared/services/borg-logger";
 import { getPlatformErrorFallback } from "../../shared/services/response-helper";
@@ -53,7 +53,7 @@ export class WhatsAppBookingOrchestrator {
       }
 
       if (session.paso_actual > 0) {
-        // Selection handling (Numeric options)
+        // Selection handling (Numeric options) - Fallback for non-interactive
         if (session.paso_actual !== 4) {
           const selection = parseInt(text.trim(), 10);
           if (!isNaN(selection)) {
@@ -91,7 +91,7 @@ export class WhatsAppBookingOrchestrator {
         // If we reach here and we were in an active flow, it means input was invalid
         const currentStep = await this.core.renderStep(session);
         let errorMsg =
-          "❌ Opción inválida. Responde con el número de tu elección (1, 2, 3...) o escribe *cancelar* para abortar.";
+          "❌ Opción inválida. Selecciona una de las opciones del menú o escribe *cancelar* para abortar.";
 
         if (session.paso_actual === 4) {
           errorMsg =
@@ -130,6 +130,37 @@ export class WhatsAppBookingOrchestrator {
       await this.api
         .sendMessage(phoneNumber, getPlatformErrorFallback("whatsapp"))
         .catch(() => {});
+    }
+  }
+
+  async handleInteractiveReply(phoneNumber: string, replyId: string) {
+    try {
+      const session = await this.core.getSession(
+        phoneNumber,
+        phoneNumber,
+        "whatsapp",
+      );
+
+      if (replyId === "START") {
+        const result = await this.core.handleAction(session, "start_booking", "0");
+        return await this.renderStep(phoneNumber, result.step, result.newState);
+      }
+
+      const [action, value] = replyId.split(":");
+      if (!action || !value) return;
+
+      if (action === "motor_help") {
+         await this.api.sendMessage(
+          phoneNumber,
+          "⚙️ *Ayuda de Motor*\n\nIndica la tecnología de propulsión. Si tienes dudas, consulta el manual de tu vehículo.",
+        );
+        return;
+      }
+
+      const result = await this.core.handleAction(session, action, value);
+      await this.renderStep(phoneNumber, result.step, result.newState);
+    } catch (error) {
+      console.error("[WhatsAppBooking] Interactive reply error:", error);
     }
   }
 
@@ -233,15 +264,83 @@ export class WhatsAppBookingOrchestrator {
       return await this.api.sendMessage(phoneNumber, "❌ *Cita cancelada.*");
     }
 
-    let fullMessage =
-      step.message.replace(/<b>/g, "*").replace(/<\/b>/g, "*") + "\n\n";
-    if (step.options) {
-      step.options.forEach((opt, i) => {
-        fullMessage += `${i + 1}. ${opt.label}\n`;
-      });
-      fullMessage += "\n_Responde con el número de tu opción._";
+    const cleanBody = step.message.replace(/<b>/g, "*").replace(/<\/b>/g, "*").replace(/<br>/g, "\n");
+
+    const stepKey = `STEP_${session.paso_actual}` as keyof typeof WHATSAPP_RENDER_CONFIG;
+    const config = WHATSAPP_RENDER_CONFIG[stepKey];
+
+    if (!config || !step.options) {
+      return await this.api.sendMessage(phoneNumber, cleanBody);
     }
 
+    // Step 0: Welcome
+    if (session.paso_actual === 0) {
+      return await this.api.sendInteractiveButtons(phoneNumber, cleanBody, [
+        { id: "START", title: "📅 Agendar Cita" }
+      ]);
+    }
+
+    const actionMap: Record<number, string> = {
+      1: "set_tipo",
+      2: "set_motor",
+      3: "set_era",
+      4: "set_km",
+      5: "set_svc",
+      6: "set_fecha",
+      7: "set_hora",
+      8: "conf_booking",
+    };
+    const action = actionMap[session.paso_actual];
+
+    if (config.type === "button" && step.options.length <= 3) {
+      return await this.api.sendInteractiveButtons(
+        phoneNumber,
+        cleanBody,
+        step.options.map(opt => ({
+          id: opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
+          title: opt.label.length > 20 ? opt.label.substring(0, 17) + "..." : opt.label
+        }))
+      );
+    }
+
+    if (config.type === "list") {
+      const sections: { title: string; rows: { id: string; title: string; description?: string }[] }[] = [];
+      if ("sections" in config) {
+        for (const sec of (config as any).sections) {
+           const rows = step.options
+             .filter(opt => sec.rows.includes(opt.label) || (opt.value === "HELP" && sec.rows.includes("HELP")))
+             .map(opt => ({
+               id: opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
+               title: opt.label.length > 24 ? opt.label.substring(0, 21) + "..." : opt.label
+             }));
+           if (rows.length > 0) {
+             sections.push({ title: sec.title, rows });
+           }
+        }
+      } else {
+        // Default section if no sections defined (e.g. dynamic dates/hours)
+        sections.push({
+          title: "Selecciona una opción",
+          rows: step.options.map(opt => ({
+            id: `${action}:${opt.value}`,
+            title: opt.label.length > 24 ? opt.label.substring(0, 21) + "..." : opt.label
+          }))
+        });
+      }
+
+      return await this.api.sendInteractiveList(
+        phoneNumber,
+        cleanBody,
+        (config as any).buttonLabel || "Seleccionar",
+        sections
+      );
+    }
+
+    // Final Fallback to text
+    let fullMessage = cleanBody + "\n\n";
+    step.options.forEach((opt, i) => {
+      fullMessage += `${i + 1}. ${opt.label}\n`;
+    });
     return await this.api.sendMessage(phoneNumber, fullMessage);
   }
 }

@@ -9,6 +9,24 @@ export const WhatsAppMessageSchema = z.object({
       body: z.string(),
     })
     .optional(),
+  interactive: z
+    .object({
+      type: z.enum(["button_reply", "list_reply"]),
+      button_reply: z
+        .object({
+          id: z.string(),
+          title: z.string(),
+        })
+        .optional(),
+      list_reply: z
+        .object({
+          id: z.string(),
+          title: z.string(),
+          description: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   type: z.string(),
 });
 

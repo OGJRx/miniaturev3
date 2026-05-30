@@ -43,6 +43,37 @@ export class WhatsAppApi {
     return true;
   }
 
+  private async postToWhatsApp(body: unknown): Promise<unknown> {
+    const url = `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSION}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.env.WHATSAPP_ACCESS_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!response.ok) {
+      this.logger?.error(
+        "whatsapp_api",
+        `Failed to WhatsApp request: ${JSON.stringify(data)}`,
+      );
+      await TitaniumCircuitBreaker.recordFailure(
+        this.env,
+        CircuitService.WHATSAPP,
+        response.status,
+      );
+    } else {
+      await TitaniumCircuitBreaker.recordSuccess(
+        this.env,
+        CircuitService.WHATSAPP,
+      );
+    }
+    return data;
+  }
+
   async sendMessage(to: string, text: string): Promise<unknown> {
     if (
       await TitaniumCircuitBreaker.shouldBlock(
@@ -63,40 +94,87 @@ export class WhatsAppApi {
       return { error: "Rate limit exceeded" };
     }
 
-    const url = `https://graph.facebook.com/${this.env.WHATSAPP_API_VERSION}/${this.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.env.WHATSAPP_ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        recipient_type: "individual",
-        to: to,
-        type: "text",
-        text: { body: text },
-      }),
+    return await this.postToWhatsApp({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "text",
+      text: { body: text },
     });
+  }
 
-    const data = (await response.json()) as Record<string, unknown>;
-    if (!response.ok) {
-      this.logger?.error(
-        "whatsapp_api",
-        `Failed to send message: ${JSON.stringify(data)}`,
-      );
-      await TitaniumCircuitBreaker.recordFailure(
+  async sendInteractiveButtons(
+    to: string,
+    bodyText: string,
+    buttons: { id: string; title: string }[],
+  ): Promise<unknown> {
+    if (
+      await TitaniumCircuitBreaker.shouldBlock(
         this.env,
         CircuitService.WHATSAPP,
-        response.status,
-      );
-    } else {
-      await TitaniumCircuitBreaker.recordSuccess(
-        this.env,
-        CircuitService.WHATSAPP,
-      );
+      )
+    ) {
+      throw new Error("WhatsApp circuit breaker is open");
     }
-    return data;
+
+    if (!(await this.checkRateLimit(to))) return { error: "Rate limit exceeded" };
+
+    return await this.postToWhatsApp({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: bodyText },
+        action: {
+          buttons: buttons.map((b) => ({
+            type: "reply",
+            reply: { id: b.id, title: b.title },
+          })),
+        },
+      },
+    });
+  }
+
+  async sendInteractiveList(
+    to: string,
+    bodyText: string,
+    buttonLabel: string,
+    sections: { title: string; rows: { id: string; title: string; description?: string }[] }[],
+  ): Promise<unknown> {
+    if (
+      await TitaniumCircuitBreaker.shouldBlock(
+        this.env,
+        CircuitService.WHATSAPP,
+      )
+    ) {
+      throw new Error("WhatsApp circuit breaker is open");
+    }
+
+    if (!(await this.checkRateLimit(to))) return { error: "Rate limit exceeded" };
+
+    return await this.postToWhatsApp({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: to,
+      type: "interactive",
+      interactive: {
+        type: "list",
+        body: { text: bodyText },
+        action: {
+          button: buttonLabel,
+          sections: sections.map((s) => ({
+            title: s.title,
+            rows: s.rows.map((r) => ({
+              id: r.id,
+              title: r.title,
+              description: r.description,
+            })),
+          })),
+        },
+      },
+    });
   }
 
   async markAsRead(messageId: string): Promise<void> {

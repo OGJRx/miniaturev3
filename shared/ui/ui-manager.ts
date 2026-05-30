@@ -5,7 +5,7 @@ export class UiManager {
   static async safeEditOrReply(
     ctx: UiContext,
     t: string,
-    o: Record<string, unknown> = {},
+    o: Record<string, unknown> & { plainText?: boolean } = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -26,14 +26,18 @@ export class UiManager {
       );
     }
 
+    const { plainText, ...options } = o;
+
     for (let i = 0; i < fragments.length; i++) {
       const fragment = fragments[i];
       if (!fragment) continue;
 
       const fragOptions: Record<string, unknown> = {
-        parse_mode: "HTML",
-        ...o,
+        ...options,
       };
+      if (!plainText) {
+        fragOptions["parse_mode"] = "HTML";
+      }
       if (i > 0) delete fragOptions["reply_markup"];
 
       const callbackQuery = ctx.callbackQuery;
@@ -68,7 +72,7 @@ export class UiManager {
   static async safeReply(
     ctx: UiContext,
     t: string,
-    o: Record<string, unknown> = {},
+    o: Record<string, unknown> & { plainText?: boolean } = {},
   ): Promise<void> {
     let finalMsg = t;
     if (!t || t.trim().length === 0) {
@@ -88,14 +92,18 @@ export class UiManager {
         `Message split into ${fragments.length} parts (total: ${finalMsg.length} chars)`,
       );
     }
+    const { plainText, ...options } = o;
+
     for (let i = 0; i < fragments.length; i++) {
       const fragment = fragments[i];
       if (!fragment) continue;
 
       const fragOptions: Record<string, unknown> = {
-        parse_mode: "HTML",
-        ...o,
+        ...options,
       };
+      if (!plainText) {
+        fragOptions["parse_mode"] = "HTML";
+      }
       if (i > 0) delete fragOptions["reply_markup"];
 
       try {
