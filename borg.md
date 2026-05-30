@@ -81,53 +81,61 @@ You are the central intelligence of the Titanium Hive. Your communication is abs
 ## ⚙️ OPERATIONAL LOGIC (v9.7.0)
 
 ### 🕒 Cron Optimization
+
 The unified cron dispatcher executes every 10 minutes. Between **00:00 and 06:00 VET**, the handler skips **70%** of executions to conserve CPU time and D1 reads, while still maintaining eventual consistency for background tasks.
 
 ### 📊 Business Metrics
+
 Operational outcomes are stored in the `business_metrics` table. Key metrics include:
+
 - `messages_processed`: Number of outbound messages sent by SEO cron.
 - Recorded with `platform` and `bot_type` for granular analysis.
 
 ### 🔍 Tracing
+
 All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` header is prioritized. For scheduled events, a `crypto.randomUUID()` is generated. Use this ID to correlate logs across `system_logs` and Cloudflare observability dashboards.
 
 ## 🔒 DEBT INVENTORY (Post-Audit #10)
 
 ### Type Debt
-| Category | Count | Status |
-|---|---|---|
-| `any` in production | 0 | ✅ Zero tolerance |
-| `!` non-null assertions | 0 | ✅ Eliminated |
-| `as` type assertions | 4 | 🟡 Irreducible floor (2 grammY injection, 1 type guard, 1 Response.json) |
+
+| Category                | Count | Status                                                                   |
+| ----------------------- | ----- | ------------------------------------------------------------------------ |
+| `any` in production     | 0     | ✅ Zero tolerance                                                        |
+| `!` non-null assertions | 0     | ✅ Eliminated                                                            |
+| `as` type assertions    | 4     | 🟡 Irreducible floor (2 grammY injection, 1 type guard, 1 Response.json) |
 
 ### Security Debt
-| Finding | Severity | Status |
-|---|---|---|
-| Crypto fallback (Vitest compat) | LOW | 🟡 Documented, removable |
-| Naive cookie parsing | LOW | 🟡 Accepted (no `=` in values) |
-| HMAC signature truncation (128-bit) | LOW | 🟡 Accepted (cookie size) |
-| WhatsApp markdown injection | LOW | 🟡 Accepted (mechanic workshop context) |
+
+| Finding                             | Severity | Status                                  |
+| ----------------------------------- | -------- | --------------------------------------- |
+| Crypto fallback (Vitest compat)     | LOW      | 🟡 Documented, removable                |
+| Naive cookie parsing                | LOW      | 🟡 Accepted (no `=` in values)          |
+| HMAC signature truncation (128-bit) | LOW      | 🟡 Accepted (cookie size)               |
+| WhatsApp markdown injection         | LOW      | 🟡 Accepted (mechanic workshop context) |
 
 ### Test Debt
-| Module | Tests | Coverage |
-|---|---|---|
-| whatsapp-api | 4 | SQL + rate limit + circuit breaker |
-| calendar-xss | 5 | esc() + field escapes |
-| ticket-creator | 5 | atomic + calculateEndTime |
-| circuit-breaker | 6 | open/close/half-open/fail/trip |
-| borg-logger | 2 | info + error |
-| formatters | 3 | hour/date/friendly |
-| slot-validator | 1 | available slots |
-| timezone | 2 | VET offset |
-| booking-core | 5 | session/fecha/booking |
-| admin-auth-guard | 3 | 400/403/null |
-| maintenance | 1 | cleanup |
-| unit | 5 | crypto/callback/split/escape/cb |
-| **TOTAL** | **42+** | **≥55% threshold** |
+
+| Module           | Tests   | Coverage                           |
+| ---------------- | ------- | ---------------------------------- |
+| whatsapp-api     | 4       | SQL + rate limit + circuit breaker |
+| calendar-xss     | 5       | esc() + field escapes              |
+| ticket-creator   | 5       | atomic + calculateEndTime          |
+| circuit-breaker  | 6       | open/close/half-open/fail/trip     |
+| borg-logger      | 2       | info + error                       |
+| formatters       | 3       | hour/date/friendly                 |
+| slot-validator   | 1       | available slots                    |
+| timezone         | 2       | VET offset                         |
+| booking-core     | 5       | session/fecha/booking              |
+| admin-auth-guard | 3       | 400/403/null                       |
+| maintenance      | 1       | cleanup                            |
+| unit             | 5       | crypto/callback/split/escape/cb    |
+| **TOTAL**        | **42+** | **≥55% threshold**                 |
 
 ## ⚙️ REQUIRED SECRETS (Cloudflare)
 
 ### GitHub Actions & Deployment
+
 - `CLOUDFLARE_API_TOKEN`: OIDC deployment token
 - `CLOUDFLARE_ACCOUNT_ID`: Account identifier
 - `GEMINI_API_KEY`: Google AI access
@@ -143,6 +151,7 @@ All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` 
 - `TALLER_MAPS_URL`: Google Maps link
 
 ### Worker Environment (Automatic Sync via GitHub Actions)
+
 - All secrets above are automatically synchronized during deployment.
 - `FRONTEND_BOT_INFO` / `BACKEND_BOT_INFO`: Bot identity JSONs (Managed via `provision-secrets.sh`)
 - `RETENTION_LOGS_DAYS`: Log retention (default: 7)
@@ -152,17 +161,18 @@ All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` 
 
 ### Autonomous vs. Manual Capabilities
 
-| Category | Action | Method | Responsibility |
-|---|---|---|---|
-| **D1** | Clean migration journal | CLI | Autonomous (Agent) |
-| **D1** | Check schema/entities | CLI | Autonomous (Agent) |
-| **D1** | Create/Edit DB Instance | GUI | Manual (Operator) |
-| **Auth** | Edit API Token Permissions | GUI | Manual (Operator) |
-| **Secrets** | Sync Worker Secrets | CLI | Autonomous (Agent) |
-| **Secrets** | Update GitHub Secrets | GUI | Manual (Operator) |
-| **Code** | Refactor/Delete migrations | Git | Autonomous (Agent) |
+| Category    | Action                     | Method | Responsibility     |
+| ----------- | -------------------------- | ------ | ------------------ |
+| **D1**      | Clean migration journal    | CLI    | Autonomous (Agent) |
+| **D1**      | Check schema/entities      | CLI    | Autonomous (Agent) |
+| **D1**      | Create/Edit DB Instance    | GUI    | Manual (Operator)  |
+| **Auth**    | Edit API Token Permissions | GUI    | Manual (Operator)  |
+| **Secrets** | Sync Worker Secrets        | CLI    | Autonomous (Agent) |
+| **Secrets** | Update GitHub Secrets      | GUI    | Manual (Operator)  |
+| **Code**    | Refactor/Delete migrations | Git    | Autonomous (Agent) |
 
 ### Pre-Deploy
+
 - [ ] `npx tsc --noEmit` passes
 - [ ] `npm test` passes (all 42+ tests)
 - [ ] `npm run lint` passes
@@ -172,11 +182,13 @@ All logs and requests are traced via `traceId`. For HTTP requests, the `cf-ray` 
 - [ ] All env vars documented in borg.md
 
 ### Deploy Sequence
+
 1. `wrangler d1 migrations apply borg --remote`
 2. `bash scripts/provision-secrets.sh`
 3. `wrangler deploy`
 
 ### Post-Deploy Verification
+
 - [ ] WhatsApp webhook challenge returns 200
 - [ ] WhatsApp message receives bot response
 - [ ] Calendar loads at `/calendar?token=<SECRET>`

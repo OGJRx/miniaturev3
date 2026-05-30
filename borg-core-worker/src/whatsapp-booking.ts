@@ -6,7 +6,10 @@ import {
 import { BookingCoreService } from "../../shared/services/booking-core";
 import { WhatsAppApi } from "../../shared/whatsapp/whatsapp-api";
 import { AdminNotificationService } from "../../shared/services/admin-notification";
-import { KILOMETRAJE_RANGES, WHATSAPP_RENDER_CONFIG } from "../../shared/types/constants";
+import {
+  KILOMETRAJE_RANGES,
+  WHATSAPP_RENDER_CONFIG,
+} from "../../shared/types/constants";
 import { formatHourTo12, formatDateFriendly } from "../../shared/ui/formatters";
 import { BorgLogger } from "../../shared/services/borg-logger";
 import { getPlatformErrorFallback } from "../../shared/services/response-helper";
@@ -142,7 +145,11 @@ export class WhatsAppBookingOrchestrator {
       );
 
       if (replyId === "START") {
-        const result = await this.core.handleAction(session, "start_booking", "0");
+        const result = await this.core.handleAction(
+          session,
+          "start_booking",
+          "0",
+        );
         return await this.renderStep(phoneNumber, result.step, result.newState);
       }
 
@@ -150,7 +157,7 @@ export class WhatsAppBookingOrchestrator {
       if (!action || !value) return;
 
       if (action === "motor_help") {
-         await this.api.sendMessage(
+        await this.api.sendMessage(
           phoneNumber,
           "⚙️ *Ayuda de Motor*\n\nIndica la tecnología de propulsión. Si tienes dudas, consulta el manual de tu vehículo.",
         );
@@ -264,9 +271,13 @@ export class WhatsAppBookingOrchestrator {
       return await this.api.sendMessage(phoneNumber, "❌ *Cita cancelada.*");
     }
 
-    const cleanBody = step.message.replace(/<b>/g, "*").replace(/<\/b>/g, "*").replace(/<br>/g, "\n");
+    const cleanBody = step.message
+      .replace(/<b>/g, "*")
+      .replace(/<\/b>/g, "*")
+      .replace(/<br>/g, "\n");
 
-    const stepKey = `STEP_${session.paso_actual}` as keyof typeof WHATSAPP_RENDER_CONFIG;
+    const stepKey =
+      `STEP_${session.paso_actual}` as keyof typeof WHATSAPP_RENDER_CONFIG;
     const config = WHATSAPP_RENDER_CONFIG[stepKey];
 
     if (!config || !step.options) {
@@ -276,7 +287,7 @@ export class WhatsAppBookingOrchestrator {
     // Step 0: Welcome
     if (session.paso_actual === 0) {
       return await this.api.sendInteractiveButtons(phoneNumber, cleanBody, [
-        { id: "START", title: "📅 Agendar Cita" }
+        { id: "START", title: "📅 Agendar Cita" },
       ]);
     }
 
@@ -296,10 +307,13 @@ export class WhatsAppBookingOrchestrator {
       return await this.api.sendInteractiveButtons(
         phoneNumber,
         cleanBody,
-        step.options.map(opt => ({
+        step.options.map((opt) => ({
           id: opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
-          title: opt.label.length > 20 ? opt.label.substring(0, 17) + "..." : opt.label
-        }))
+          title:
+            opt.label.length > 20
+              ? opt.label.substring(0, 17) + "..."
+              : opt.label,
+        })),
       );
     }
 
@@ -314,19 +328,23 @@ export class WhatsAppBookingOrchestrator {
           readonly title: string;
           readonly rows: readonly string[];
         }
-        const configWithSections = config as unknown as { readonly sections: readonly SectionConfig[] };
+        const configWithSections = config as unknown as {
+          readonly sections: readonly SectionConfig[];
+        };
         for (const sec of configWithSections.sections) {
           const rows = step.options
-            .filter(
-              (opt) => {
-                const optLabel = opt.label;
-                return sec.rows.includes(optLabel) ||
-                (opt.value === "HELP" && sec.rows.includes("HELP"));
-              }
-            )
+            .filter((opt) => {
+              const optLabel = opt.label;
+              return (
+                sec.rows.includes(optLabel) ||
+                (opt.value === "HELP" && sec.rows.includes("HELP"))
+              );
+            })
             .map((opt) => ({
               id:
-                opt.value === "HELP" ? "motor_help:1" : `${action}:${opt.value}`,
+                opt.value === "HELP"
+                  ? "motor_help:1"
+                  : `${action}:${opt.value}`,
               title:
                 opt.label.length > 24
                   ? opt.label.substring(0, 21) + "..."
@@ -352,7 +370,8 @@ export class WhatsAppBookingOrchestrator {
 
       let buttonLabel = "Seleccionar";
       if ("buttonLabel" in config) {
-        buttonLabel = (config as unknown as { readonly buttonLabel: string }).buttonLabel;
+        buttonLabel = (config as unknown as { readonly buttonLabel: string })
+          .buttonLabel;
       }
 
       return await this.api.sendInteractiveList(
