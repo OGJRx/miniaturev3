@@ -201,6 +201,14 @@ jobs:
             TALLER_LONGITUD
             TALLER_MAPS_URL
 
+      - name: 📄 Deploy Dashboard Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy borg-dashboard --project-name win365-1
+          workingDirectory: .
+
       - name: 🔗 Activate Webhooks
         working-directory: borg-core-worker
         env:

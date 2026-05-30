@@ -495,29 +495,6 @@
         max-width: 400px;
       }
 
-      .auth-input {
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        padding: 0.65rem 1rem;
-        color: var(--text-primary);
-        font-family: inherit;
-        font-size: 0.9rem;
-        width: 100%;
-        max-width: 320px;
-        margin-top: 1.25rem;
-        text-align: center;
-      }
-
-      .auth-input:focus {
-        outline: none;
-        border-color: var(--accent-blue);
-      }
-
-      .auth-input::placeholder {
-        color: var(--text-muted);
-      }
-
       /* Last update */
       .last-update {
         text-align: center;
@@ -951,13 +928,9 @@
         // --- Init ---
         var token = getToken();
         if (token) {
-          // If token was in URL, save it and clean URL for security
-          var params = new URLSearchParams(window.location.search);
-          if (params.get("token")) {
-            setToken(params.get("token"));
-            var url = new URL(window.location);
-            url.searchParams.delete("token");
-            window.history.replaceState({}, "", url.pathname);
+          // Persist token in sessionStorage for API calls
+          if (!sessionStorage.getItem(TOKEN_KEY)) {
+            setToken(token);
           }
           renderDashboard();
         } else {
